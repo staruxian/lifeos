@@ -1,0 +1,13 @@
+{
+  "name": "lifeos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "lifeos": "src/index.ts" },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "test": "bun test",
+    "build": "bun build src/index.ts --compile --outfile dist/lifeos"
+  },
+  "devDependencies": { "@types/bun": "latest" }
+}

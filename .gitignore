@@ -1,0 +1,4 @@
+cli/dist/
+cli/node_modules/
+cli/bun.lock
+*.bak

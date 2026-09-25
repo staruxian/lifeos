@@ -1,0 +1,16 @@
+module components
+singleton Theme 1.0 Theme.qml
+Card 1.0 Card.qml
+CheckCircle 1.0 CheckCircle.qml
+Chip 1.0 Chip.qml
+EmptyState 1.0 EmptyState.qml
+Field 1.0 Field.qml
+Flame 1.0 Flame.qml
+Heatmap 1.0 Heatmap.qml
+IconButton 1.0 IconButton.qml
+PillButton 1.0 PillButton.qml
+ProgressBar 1.0 ProgressBar.qml
+Ring 1.0 Ring.qml
+SectionHeader 1.0 SectionHeader.qml
+SegmentedControl 1.0 SegmentedControl.qml
+Stepper 1.0 Stepper.qml

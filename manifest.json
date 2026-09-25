@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "staruxian.lifeos",
+  "name": "LifeOS",
+  "version": "1.0.0",
+  "author": "staruxian",
+  "license": "MIT",
+  "homepage": "https://github.com/staruxian/omarchy-lifeos",
+  "description": "Tasks, habits, reading and countdowns — your day in one panel.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "LifeOS",
+    "description": "Today's progress ring in the bar; tasks, habits with a GitHub-style history, books and countdowns in the panel.",
+    "category": "Productivity",
+    "aliases": ["lifeos", "habits", "tasks", "reading", "countdown"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "label": "event", "tab": "today" },
+    "schema": [
+      { "key": "label", "type": "enum", "label": "Next to the ring", "options": ["event", "tasks", "habits", "none"], "defaultValue": "event", "description": "What the bar shows beside today's progress ring. Right-click the widget to cycle." }
+    ]
+  }
+}
