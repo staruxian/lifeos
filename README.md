@@ -20,7 +20,7 @@ LifeOS needs [Bun](https://bun.sh), which runs its small local database:
 
 ```sh
 omarchy pkg add bun
-omarchy plugin add https://github.com/staruxian/omarchy-lifeos.git --enable
+omarchy plugin add https://github.com/staruxian/lifeos.git --enable
 ```
 
 If Bun is missing, the panel says so and offers to install it.

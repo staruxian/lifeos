@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "staruxian",
   "license": "MIT",
-  "homepage": "https://github.com/staruxian/omarchy-lifeos",
+  "homepage": "https://github.com/staruxian/lifeos",
   "description": "Tasks, habits, reading and countdowns — your day in one panel.",
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "BarWidget.qml" },
