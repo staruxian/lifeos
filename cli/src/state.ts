@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite"
-import { mkdirSync, renameSync, writeFileSync } from "node:fs"
+import { renameSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
 import { addDays, diffDays, isScheduled, weekday, type Day } from "./dates"
-import { paths } from "./db"
+import { paths, privateDir } from "./db"
 import type { HabitKind } from "./store"
 
 // The snapshot is the whole contract with the shell plugin: every number the
@@ -335,8 +335,10 @@ export function buildState(db: Database, today: Day, now = new Date()): State {
 // Written beside, then renamed over, so the plugin's watcher never sees a
 // half-written file.
 export function writeState(state: State, path = paths.state) {
-  mkdirSync(dirname(path), { recursive: true })
+  privateDir(dirname(path))
   const tmp = `${path}.${process.pid}.tmp`
-  writeFileSync(tmp, JSON.stringify(state))
+  // The mode applies at creation, so the snapshot is never world-readable,
+  // not even for the moment before the rename.
+  writeFileSync(tmp, JSON.stringify(state), { mode: 0o600 })
   renameSync(tmp, path)
 }

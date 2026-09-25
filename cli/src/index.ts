@@ -268,6 +268,9 @@ const HELP = `lifeos — tasks, habits, books and countdowns
   state: ${paths.state}`
 
 function main() {
+  // Nothing LifeOS creates — database, its journal files, the snapshot — is
+  // for other users' eyes.
+  process.umask(0o077)
   let args: Args
   const json = process.argv.includes("--json")
   try {

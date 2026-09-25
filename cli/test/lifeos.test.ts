@@ -215,3 +215,37 @@ describe("backfill", () => {
     expect(habit.heat.flat().find((c) => c.day === addDays(FRI, -3))!.state).toBe("done")
   })
 })
+
+describe("privacy", () => {
+  test("data and state are readable by their owner only, even under a loose umask", () => {
+    const { mkdtempSync, statSync, mkdirSync, writeFileSync, chmodSync } = require("node:fs") as typeof import("node:fs")
+    const { join } = require("node:path") as typeof import("node:path")
+    const { tmpdir } = require("node:os") as typeof import("node:os")
+    const { writeState } = require("../src/state") as typeof import("../src/state")
+
+    const previous = process.umask(0o022)
+    try {
+      const root = mkdtempSync(join(tmpdir(), "lifeos-"))
+      // A directory and file left world-readable by an older version get tightened.
+      const dataDir = join(root, "share/lifeos")
+      mkdirSync(dataDir, { recursive: true, mode: 0o755 })
+      const dbPath = join(dataDir, "lifeos.db")
+      writeFileSync(dbPath, "")
+      chmodSync(dbPath, 0o644)
+
+      const db = openDb(dbPath)
+      store.addTask(db, "secret", null, FRI)
+      const statePath = join(root, "state/lifeos/state.json")
+      writeState(buildState(db, FRI), statePath)
+      db.close()
+
+      const mode = (p: string) => statSync(p).mode & 0o777
+      expect(mode(dataDir)).toBe(0o700)
+      expect(mode(dbPath)).toBe(0o600)
+      expect(mode(join(root, "state/lifeos"))).toBe(0o700)
+      expect(mode(statePath)).toBe(0o600)
+    } finally {
+      process.umask(previous)
+    }
+  })
+})

@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite"
-import { mkdirSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { homedir } from "node:os"
 
@@ -68,12 +68,31 @@ const migrations: string[] = [
   `,
 ]
 
+// Tasks, habits and reading are personal: everything LifeOS writes is
+// readable by you alone, whatever the umask says.
+export function makePrivate(path: string, mode: number) {
+  if (existsSync(path)) chmodSync(path, mode)
+}
+
+export function privateDir(dir: string) {
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  // mkdir leaves an existing directory alone, so tighten one made by an older version.
+  makePrivate(dir, 0o700)
+}
+
 export function openDb(path = paths.db): Database {
-  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true })
-  const db = new Database(path, { create: true, strict: true })
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 2000;")
-  migrate(db)
-  return db
+  if (path !== ":memory:") privateDir(dirname(path))
+  // SQLite creates the -wal and -shm companions itself; the umask covers them.
+  const previous = process.umask(0o077)
+  try {
+    const db = new Database(path, { create: true, strict: true })
+    db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 2000;")
+    migrate(db)
+    if (path !== ":memory:") for (const suffix of ["", "-wal", "-shm"]) makePrivate(path + suffix, 0o600)
+    return db
+  } finally {
+    process.umask(previous)
+  }
 }
 
 function migrate(db: Database) {
