@@ -79,7 +79,7 @@ function habit(db: Database, id: number): HabitRow {
 
 function logValue(db: Database, id: number, day: Day): number {
   const row = db.query("SELECT value FROM habit_logs WHERE habit_id = ? AND day = ?").get(id, day) as { value: number } | null
-  return row?.value ?? 0
+  return Math.max(0, row?.value ?? 0)
 }
 
 export function setHabitValue(db: Database, id: number, day: Day, value: number) {
@@ -217,4 +217,78 @@ export function updateEvent(db: Database, id: number, changes: { title?: string;
 export function removeEvent(db: Database, id: number) {
   const changed = db.query("DELETE FROM events WHERE id = ?").run(id)
   if (changed.changes === 0) throw new LifeError(`event ${id} not found`)
+}
+
+// ---- the day: priorities, plan, shutdown ------------------------------------
+
+export const MAX_PRIORITIES = 3
+
+export function taskTitle(db: Database, id: number): string {
+  const row = db.query("SELECT title FROM tasks WHERE id = ?").get(id) as { title: string } | null
+  return need(row, `task ${id}`).title
+}
+
+// Decided against: gone from every list, kept in the table.
+export function dropTask(db: Database, id: number, today: Day) {
+  const changed = db.query("UPDATE tasks SET dropped_on = ?, focus_on = NULL WHERE id = ?").run(today, id)
+  if (changed.changes === 0) throw new LifeError(`task ${id} not found`)
+}
+
+// Making a task a priority for a day also makes it due that day at the
+// latest, so it shows under Today.
+export function setFocus(db: Database, id: number, on: boolean, today: Day) {
+  const task = need(db.query("SELECT focus_on, due, done_on FROM tasks WHERE id = ? AND dropped_on IS NULL").get(id) as
+    { focus_on: Day | null; due: Day | null; done_on: Day | null } | null, `task ${id}`)
+  if (!on) {
+    db.query("UPDATE tasks SET focus_on = NULL WHERE id = ?").run(id)
+    return
+  }
+  if (task.focus_on === today) return
+  const count = (db.query("SELECT COUNT(*) AS n FROM tasks WHERE focus_on = ? AND dropped_on IS NULL").get(today) as { n: number }).n
+  if (count >= MAX_PRIORITIES) throw new LifeError(`${MAX_PRIORITIES} priorities is the limit — finish or swap one`)
+  db.query("UPDATE tasks SET focus_on = ?, due = CASE WHEN due IS NULL OR due > ? THEN ? ELSE due END WHERE id = ?").run(today, today, today, id)
+}
+
+function touchDay(db: Database, day: Day, column: "planned_at" | "shutdown_at", at: string | null) {
+  db.query(`INSERT INTO days (day, ${column}) VALUES (?, ?) ON CONFLICT (day) DO UPDATE SET ${column} = excluded.${column}`).run(day, at)
+}
+
+export function markPlanned(db: Database, day: Day, at: string) {
+  touchDay(db, day, "planned_at", at)
+}
+
+// Shutting down asks that nothing due is left undecided.
+export function markShutdown(db: Database, day: Day, at: string) {
+  const open = (db.query(`
+    SELECT COUNT(*) AS n FROM tasks
+    WHERE done_on IS NULL AND dropped_on IS NULL AND due IS NOT NULL AND due <= ?
+  `).get(day) as { n: number }).n
+  if (open > 0) throw new LifeError(`${open} task${open === 1 ? " still needs" : "s still need"} a decision`)
+  touchDay(db, day, "shutdown_at", at)
+}
+
+// ---- habits: skipping ---------------------------------------------------------
+
+export const SKIP = -1
+
+// A skip keeps the chain without counting as kept. One per habit per week
+// (Monday to Sunday), and never for avoid habits — there is nothing to skip.
+export function skipHabit(db: Database, id: number, day: Day, weekStart: Day, weekEnd: Day) {
+  const h = habit(db, id)
+  if (h.kind === "avoid") throw new LifeError("an avoid habit cannot be skipped")
+  const used = db.query("SELECT day FROM habit_logs WHERE habit_id = ? AND value = ? AND day BETWEEN ? AND ?").get(id, SKIP, weekStart, weekEnd) as { day: Day } | null
+  if (used && used.day !== day) throw new LifeError("one skip a week — this week's is used")
+  db.query("INSERT INTO habit_logs (habit_id, day, value) VALUES (?, ?, ?) ON CONFLICT (habit_id, day) DO UPDATE SET value = excluded.value").run(id, day, SKIP)
+}
+
+export function habitName(db: Database, id: number): string {
+  return need(db.query("SELECT name FROM habits WHERE id = ?").get(id) as { name: string } | null, `habit ${id}`).name
+}
+
+export function bookTitle(db: Database, id: number): string {
+  return need(db.query("SELECT title FROM books WHERE id = ?").get(id) as { title: string } | null, `book ${id}`).title
+}
+
+export function eventTitle(db: Database, id: number): string {
+  return need(db.query("SELECT title FROM events WHERE id = ?").get(id) as { title: string } | null, `event ${id}`).title
 }

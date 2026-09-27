@@ -14,6 +14,29 @@ progress and countdowns, built into the Omarchy bar.
 
 The bar shows a ring for how much of today is done, next to the nearest countdown.
 
+### A day with a shape
+
+- **Quick add from anywhere** — a Spotlight-style box: type `pay rent fri`, press Enter.
+  A trailing `!` makes it one of today's priorities; `read 20` logs pages. It shows how it
+  read your words before you commit.
+- **Morning plan** — at login LifeOS asks for *at most three* priorities. They're pinned
+  to the top of Today.
+- **Evening shutdown** — every unfinished task gets a decision: done, tomorrow, next week,
+  someday, or drop. Nothing rolls over silently.
+- **Reminders that get louder** — a nudge when habits are still open, the ring turns
+  orange two hours later, and pulses red an hour before bed.
+- **Your week** — the share of promises kept (scheduled habits and priorities), perfect
+  days, tasks, pages, your strongest habit and the one that needs attention.
+- **Day complete** — close every habit and task and the ring celebrates.
+- **Undo** — every change can be taken back from the banner (or `u`, or `lifeos undo`).
+- **Edit anything** — double-click a task to rename, click its date to move it; habits,
+  books and countdowns have an edit button.
+- **Skips** — one per habit per week keeps a streak alive without pretending it was kept.
+
+**Strict mode** (Settings) makes it firm: only today and yesterday can be logged, the
+evening shutdown opens on its own, and a habit with a streak is deleted only by typing
+its name.
+
 ## Install
 
 LifeOS needs [Bun](https://bun.sh), which runs its small local database:
@@ -44,13 +67,19 @@ lifeos help
 |---|---|
 | `1`–`5`, `h` / `l` | switch tabs |
 | `n` | jump to the add field |
-| `Esc` | close |
+| `p` · `s` · `w` · `,` | plan · shutdown · week · settings |
+| `u` | undo |
+| `Esc` | back / close |
 
-A keyboard shortcut, e.g. in `~/.config/hypr/bindings.lua`:
+Keyboard shortcuts, e.g. in `~/.config/hypr/bindings.lua`:
 
 ```lua
 o.bind("SUPER + SHIFT + L", "LifeOS", "omarchy-shell staruxian.lifeos toggle")
+o.bind("SUPER + ALT + A", "LifeOS quick add", "omarchy-shell staruxian.lifeos quickadd")
 ```
+
+Settings live in the panel (gear icon) or `lifeos set`: `strict`, `plan`, `morning`,
+`remind`, `shutdown`, `bedtime`, `notify`.
 
 From a terminal (with `install.sh`), everything updates the bar live:
 
@@ -60,6 +89,9 @@ lifeos add Pay rent due:fri
 lifeos habit add Drink water --kind count --target 8 --unit glasses
 lifeos read 25                           # pages for the book you are reading
 lifeos event add Trip --on "nov 3" --emoji ✈️
+lifeos quick "ship the release!"         # as the quick box: a priority for today
+lifeos plan · lifeos shutdown · lifeos review · lifeos undo
+lifeos set strict on
 ```
 
 Dates understand `today`, `tomorrow`, `fri`, `next mon`, `in 3 days`, `2w`, `3.11`, `nov 3`, `2026-11-03`.
@@ -90,7 +122,7 @@ cli/                                        the lifeos CLI (Bun + TypeScript + S
 The CLI owns the data and computes every number the panel shows; the QML only
 lays it out. `cd cli && bun test` runs the tests. `./install.sh` from a checkout
 links it into the shell. The shell caches plugin QML, so run
-`omarchy restart shell` after edits.
+`omarchy restart shell` after edits. `bun run typecheck` checks the TypeScript.
 
 ## License
 

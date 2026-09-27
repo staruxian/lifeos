@@ -8,17 +8,128 @@ PageBase {
 
   readonly property var s: snap ? snap.summary : null
   readonly property var habits: snap ? snap.habits.filter(function(h) { return h.scheduledToday }) : []
-  readonly property var tasks: snap ? snap.tasks.overdue.concat(snap.tasks.today).concat(snap.tasks.doneToday) : []
+  readonly property var day: snap ? snap.day : null
+  readonly property var priorities: day ? day.priorities : []
+  // Priorities have their own section; the task list shows everything else due.
+  readonly property var tasks: snap ? snap.tasks.overdue.concat(snap.tasks.today).concat(snap.tasks.doneToday).filter(function(t) { return !t.focus }) : []
   readonly property var book: snap && snap.books.reading.length ? snap.books.reading[0] : null
   readonly property var nextEvent: s ? s.nextEvent : null
   readonly property bool blank: snap !== null && snap.habits.length === 0 && tasks.length === 0 && !book && !nextEvent
     && snap.tasks.upcoming.length === 0 && snap.tasks.someday.length === 0
-  readonly property bool allDone: s !== null && !blank && s.habitsDone === s.habitsDue && s.tasksLeft === 0
-    && (s.habitsDue + s.tasksDoneToday) > 0
+  readonly property bool allDone: s !== null && !blank && s.dayComplete
 
   function focusAdd() { taskField.focusInput() }
 
   spacing: Theme.s(16)
+
+  // ---- the day asking for attention: plan, shut down, or habits left late
+  Rectangle {
+    id: attention
+    readonly property string kind: !root.day ? ""
+      : root.day.needsPlan ? "plan"
+      : root.day.needsShutdown ? "shutdown"
+      : root.day.alert !== "none" ? root.day.alert
+      : ""
+    visible: kind !== ""
+    width: parent.width
+    height: cta.implicitHeight + Theme.s(28)
+    radius: Theme.radius
+    color: kind === "urgent" ? Theme.alpha(Theme.danger, 0.16)
+      : kind === "warn" || kind === "shutdown" ? Theme.alpha(Theme.fire, 0.14)
+      : Theme.alpha(Theme.good, 0.12)
+
+    Row {
+      id: cta
+      anchors.left: parent.left
+      anchors.leftMargin: Theme.s(16)
+      anchors.right: parent.right
+      anchors.rightMargin: Theme.s(12)
+      anchors.verticalCenter: parent.verticalCenter
+      spacing: Theme.s(12)
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: attention.kind === "plan" ? "\u{f0599}" : attention.kind === "shutdown" ? "\u{f0594}" : "\u{f0238}"
+        color: attention.kind === "urgent" ? Theme.danger : attention.kind === "plan" ? Theme.good : Theme.fire
+        font.family: Theme.iconFont
+        font.pixelSize: Theme.title
+      }
+
+      Column {
+        anchors.verticalCenter: parent.verticalCenter
+        width: parent.width - Theme.s(40) - (ctaButton.visible ? ctaButton.width + Theme.s(12) : 0)
+        spacing: Theme.s(1)
+        Text {
+          width: parent.width
+          text: {
+            var k = attention.kind
+            if (k === "plan") return "Plan your day"
+            if (k === "shutdown") return "Time to shut down"
+            var n = root.day ? root.day.habitsLeft.length : 0
+            return n + (n === 1 ? " habit" : " habits") + (k === "urgent" ? " left — don't break the chain" : " still open")
+          }
+          color: Theme.label
+          font.family: Theme.font
+          font.pixelSize: Theme.body
+          font.weight: Font.DemiBold
+          elide: Text.ElideRight
+        }
+        Text {
+          width: parent.width
+          text: {
+            var k = attention.kind
+            if (k === "plan") return "Choose up to three priorities."
+            if (k === "shutdown") return root.day.leftovers.length + " unfinished — give each a place."
+            return root.day ? root.day.habitsLeft.join(" · ") : ""
+          }
+          color: Theme.secondary
+          font.family: Theme.font
+          font.pixelSize: Theme.footnote
+          elide: Text.ElideRight
+        }
+      }
+
+      PillButton {
+        id: ctaButton
+        anchors.verticalCenter: parent.verticalCenter
+        visible: attention.kind === "plan" || attention.kind === "shutdown"
+        text: attention.kind === "plan" ? "Plan" : "Close day"
+        tint: attention.kind === "plan" ? Theme.good : Theme.fire
+        onClicked: root.navigate("mode:" + attention.kind, false)
+      }
+    }
+  }
+
+  // ---- priorities, pinned
+  Column {
+    visible: root.priorities.length > 0
+    width: parent.width
+    spacing: Theme.s(6)
+
+    SectionHeader {
+      text: "Focus"
+      trailing: root.s ? root.s.prioritiesDone + " of " + root.s.priorities : ""
+      color: Theme.fire
+    }
+
+    Card {
+      width: parent.width
+      padding: Theme.s(3)
+      spacing: 0
+      color: Theme.alpha(Theme.fire, 0.07)
+
+      Repeater {
+        model: root.priorities
+        Column {
+          required property var modelData
+          required property int index
+          width: parent.width
+          Hairline { visible: index > 0; inset: Theme.s(40) }
+          TaskRow { task: modelData; host: root.host; showDue: false }
+        }
+      }
+    }
+  }
 
   // ---- all clear
   Rectangle {
@@ -34,7 +145,7 @@ PageBase {
       Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0e1e}"; color: Theme.good; font.family: Theme.iconFont; font.pixelSize: Theme.headline }
       Text {
         anchors.verticalCenter: parent.verticalCenter
-        text: "Everything done for today"
+        text: root.day && root.day.shutdown ? "Day complete and closed. Well done." : "Day complete. Well done."
         color: Theme.good
         font.family: Theme.font
         font.pixelSize: Theme.body

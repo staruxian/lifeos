@@ -26,8 +26,23 @@ BarWidget {
   property var state: null
   property string lastError: ""
   property int errorSerial: 0
+  // A change made from the panel that can be undone, announced once.
+  property string lastChange: ""
+  property int changeSerial: 0
+  // Bumped when the day becomes complete while LifeOS is running.
+  property int celebrateSerial: 0
   readonly property var summary: state ? state.summary : null
   readonly property real progress: Model.dayProgress(summary)
+  readonly property string alert: state && state.day ? state.day.alert : "none"
+  readonly property bool strict: state && state.settings ? state.settings.strict === "on" : false
+
+  // One bar per monitor: only the first does the once-per-session work
+  // (reminders, opening the plan, the quick-add box).
+  readonly property bool leader: {
+    if (!bar || typeof bar.moduleWidgets !== "function") return true
+    var peers = bar.moduleWidgets(moduleName)
+    return !peers || peers.length === 0 || peers[0] === root
+  }
 
   readonly property string labelMode: {
     var mode = String(setting("label", "event"))
@@ -120,7 +135,9 @@ BarWidget {
     cli.running = true
   }
 
-  function applyState(text) {
+  // `own` is true for replies to commands this widget ran; only those
+  // announce their change (with Undo) — the file watcher sees every change.
+  function applyState(text, own) {
     if (!text) return false
     try {
       var parsed = JSON.parse(text)
@@ -132,7 +149,20 @@ BarWidget {
       if (parsed && parsed.version === 1) {
         // The same snapshot can arrive twice — on stdout and through the
         // file watcher. Only a newer one replaces the model.
-        if (!root.state || parsed.generatedAt >= root.state.generatedAt) root.state = parsed
+        if (!root.state || parsed.generatedAt >= root.state.generatedAt) {
+          var wasComplete = root.state ? root.state.summary.dayComplete : null
+          var sameDay = root.state ? root.state.today === parsed.today : false
+          root.state = parsed
+          if (sameDay && wasComplete === false && parsed.summary.dayComplete) root.celebrateSerial++
+          root.afterState()
+        }
+        if (own && parsed.change) {
+          root.lastChange = parsed.change.label
+          root.changeSerial++
+        } else if (own && parsed.undone) {
+          root.lastChange = "Undid: " + parsed.undone
+          root.changeSerial++
+        }
         return true
       }
     } catch (e) {
@@ -152,7 +182,7 @@ BarWidget {
       waitForEnd: true
     }
     onExited: function(code) {
-      if (!root.applyState(String(cliOut.text || "").trim()) && code !== 0) {
+      if (!root.applyState(String(cliOut.text || "").trim(), true) && code !== 0) {
         root.lastError = String(cliErr.text || "Something went wrong").trim().split("\n").pop()
         root.errorSerial++
       }
@@ -165,18 +195,35 @@ BarWidget {
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
-    onLoaded: root.applyState(text())
+    onLoaded: root.applyState(text(), false)
   }
 
-  // Midnight turns today into yesterday; ask for a fresh snapshot.
+  // Every minute: reminders go out (once each), the alert level and the
+  // day's phase move on, and midnight turns today into yesterday.
   Timer {
     interval: 60000
     running: true
     repeat: true
-    onTriggered: {
-      var now = new Date()
-      var today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0")
-      if (!root.state || root.state.today !== today) root.run(["state"])
+    onTriggered: root.run([root.leader ? "tick" : "state"])
+  }
+
+  // ---- opening on its own ------------------------------------------------
+
+  // At login the day asks to be planned; in strict mode the evening
+  // shutdown and Monday's review insist too. Each opens once per day.
+  property string openedPlanOn: ""
+  property string openedShutdownOn: ""
+
+  function afterState() {
+    if (!root.leader || !root.state || !root.state.day || root.opened) return
+    var d = root.state.day
+    var today = root.state.today
+    if (d.needsPlan && root.openedPlanOn !== today) {
+      root.openedPlanOn = today
+      Qt.callLater(function() { root.openMode("plan") })
+    } else if (root.strict && d.needsShutdown && root.openedShutdownOn !== today) {
+      root.openedShutdownOn = today
+      Qt.callLater(function() { root.openMode("shutdown") })
     }
   }
 
@@ -217,6 +264,54 @@ BarWidget {
 
   function refresh() { run(["state"]) }
 
+  function undo() { run(["undo"]) }
+  function quick(text) { run(["quick", "--", text]) }
+  function renameTask(id, title) { run(["task", "rename", String(id), "--", title]) }
+  function focusTask(id, on) { run(on ? ["task", "focus", String(id)] : ["task", "focus", String(id), "--off"]) }
+  function dropTask(id) { run(["task", "drop", String(id)]) }
+  function planDay() {
+    run(["plan", "start"])
+    if (root.state && root.state.review && root.state.review.due) run(["review", "seen"])
+  }
+  function reviewSeen() { run(["review", "seen"]) }
+  function shutdownDay() { run(["shutdown"]) }
+  function skipHabit(id) { run(["habit", "skip", String(id)]) }
+  function unskipHabit(id) { run(["habit", "set", String(id), "0"]) }
+  function editHabit(id, h) {
+    var args = ["habit", "edit", String(id), "--name", h.name]
+    if (h.target) args = args.concat(["--target", String(h.target)])
+    if (h.unit !== undefined) args = args.concat(["--unit", h.unit])
+    if (h.days) args = args.concat(["--days", h.days])
+    run(args)
+  }
+  function editBook(id, title, pages) { run(["book", "edit", String(id), "--title", title, "--pages", String(pages)]) }
+  function editEvent(id, title, day, emoji) { run(["event", "edit", String(id), "--title", title, "--on", day, "--emoji", emoji || ""]) }
+  function setSetting(key, value) { run(["set", key, String(value)]) }
+
+  // Live preview for the quick-add box, off the main queue so typing never
+  // waits behind a save.
+  property var preview: null
+  function parsePreview(text) {
+    if (root.cliCommand.length === 0) return
+    if (parser.running) { parser.pending = text; return }
+    parser.command = root.cliCommand.concat(["--json", "parse", "--", text])
+    parser.running = true
+  }
+
+  Process {
+    id: parser
+    property var pending: null
+    stdout: StdioCollector { id: parserOut; waitForEnd: true }
+    onExited: {
+      try { root.preview = JSON.parse(String(parserOut.text || "{}")).parsed || null } catch (e) { root.preview = null }
+      if (parser.pending !== null) {
+        var next = parser.pending
+        parser.pending = null
+        root.parsePreview(next)
+      }
+    }
+  }
+
   // ---- panel plumbing (same contract as the built-in clock) --------------
 
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
@@ -227,6 +322,7 @@ BarWidget {
   function togglePanel() { if (panelLoader.item) panelLoader.item.toggle() }
   function closeForPopoutSwitch() { if (panelLoader.item) panelLoader.item.closeForPopoutSwitch() }
   function openTab(tab, focusAdd) { if (panelLoader.item) panelLoader.item.openTab(tab, focusAdd) }
+  function openMode(mode) { if (panelLoader.item) panelLoader.item.openMode(mode) }
 
   function cycleLabel() {
     var modes = ["event", "tasks", "habits", "none"]
@@ -273,6 +369,18 @@ BarWidget {
     function refresh(): void { root.refresh() }
     function tab(name: string): void { root.openTab(name, false) }
     function add(name: string): void { root.openTab(name || "tasks", true) }
+    function quickadd(): void { if (quickLoader.item) quickLoader.item.toggle() }
+    function plan(): void { root.openMode("plan") }
+    function shutdown(): void { root.openMode("shutdown") }
+    function review(): void { root.openMode("week") }
+    function settings(): void { root.openMode("settings") }
+  }
+
+  Loader {
+    id: quickLoader
+    active: root.leader
+    source: Qt.resolvedUrl("QuickAdd.qml")
+    onLoaded: item.host = root
   }
 
   // ---- the bar item ------------------------------------------------------
@@ -311,8 +419,32 @@ BarWidget {
         size: Math.round(Style.font.body * 1.05)
         lineWidth: Math.max(2, Math.round(size * 0.17))
         value: root.progress
-        color: root.progress >= 1 ? Theme.good : button.foreground
-        trackColor: Theme.alpha(button.foreground, 0.22)
+        color: root.progress >= 1 ? Theme.good
+          : root.alert === "urgent" ? Theme.danger
+          : root.alert === "warn" ? Theme.fire
+          : button.foreground
+        trackColor: root.alert === "none" ? Theme.alpha(button.foreground, 0.22) : Theme.alpha(color, 0.3)
+        Behavior on color { ColorAnimation { duration: Theme.slow } }
+
+        // Late with habits still open: the ring breathes until they are done.
+        SequentialAnimation on opacity {
+          running: root.alert === "urgent"
+          loops: Animation.Infinite
+          onRunningChanged: if (!running) ring.opacity = 1
+          NumberAnimation { to: 0.35; duration: 700; easing.type: Easing.InOutSine }
+          NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
+        }
+
+        // The day closes: one proud pulse.
+        SequentialAnimation {
+          id: celebrate
+          NumberAnimation { target: ring; property: "scale"; to: 1.45; duration: 180; easing.type: Easing.OutCubic }
+          NumberAnimation { target: ring; property: "scale"; to: 1; duration: 520; easing.type: Easing.OutElastic }
+        }
+        Connections {
+          target: root
+          function onCelebrateSerialChanged() { celebrate.restart() }
+        }
       }
 
       Text {

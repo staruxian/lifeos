@@ -10,6 +10,8 @@ Card {
   property var event: null
   property var host: null
   property bool removable: true
+  property bool editing: false
+  property var editTarget: null
 
   signal activated()
 
@@ -45,7 +47,7 @@ Card {
     Column {
       anchors.left: badge.right
       anchors.leftMargin: Theme.s(12)
-      anchors.right: tools.left
+      anchors.right: editButton.left
       anchors.rightMargin: Theme.s(8)
       anchors.verticalCenter: parent.verticalCenter
       spacing: Theme.s(2)
@@ -66,6 +68,18 @@ Card {
         font.family: Theme.font
         font.pixelSize: Theme.footnote
       }
+    }
+
+    IconButton {
+      id: editButton
+      anchors.right: tools.left
+      anchors.verticalCenter: parent.verticalCenter
+      visible: root.removable && root.hovered && !root.editing
+      width: visible ? implicitWidth : 0
+      icon: "\u{f03eb}"
+      tooltip: "Edit"
+      color: Theme.tertiary
+      onClicked: { root.editTarget = root.event; root.editing = true }
     }
 
     DeleteButton {
@@ -104,6 +118,16 @@ Card {
         font.letterSpacing: 1
       }
     }
+  }
+
+  NewEvent {
+    visible: root.editing
+    width: parent.width
+    host: root.host
+    event: root.editing ? root.editTarget : null
+    color: "transparent"
+    padding: 0
+    onClosed: root.editing = false
   }
 
   ProgressBar {

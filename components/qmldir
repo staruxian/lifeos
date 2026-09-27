@@ -14,3 +14,5 @@ Ring 1.0 Ring.qml
 SectionHeader 1.0 SectionHeader.qml
 SegmentedControl 1.0 SegmentedControl.qml
 Stepper 1.0 Stepper.qml
+Confetti 1.0 Confetti.qml
+Switch 1.0 Switch.qml

@@ -8,6 +8,7 @@ const home = homedir()
 export const paths = {
   db: process.env.LIFEOS_DB ?? join(process.env.XDG_DATA_HOME ?? join(home, ".local/share"), "lifeos/lifeos.db"),
   state: process.env.LIFEOS_STATE ?? join(process.env.XDG_STATE_HOME ?? join(home, ".local/state"), "lifeos/state.json"),
+  undo: process.env.LIFEOS_UNDO ?? join(process.env.XDG_STATE_HOME ?? join(home, ".local/state"), "lifeos/undo.db"),
 }
 
 // Each entry moves the schema one version forward. Never edit a shipped
@@ -64,6 +65,30 @@ const migrations: string[] = [
     day        TEXT NOT NULL,
     emoji      TEXT NOT NULL DEFAULT '',
     created_on TEXT NOT NULL
+  );
+  `,
+  `
+  -- focus_on: the day this task is one of the day's (at most three) priorities.
+  -- dropped_on: decided against at shutdown; kept for the record, never shown.
+  ALTER TABLE tasks ADD COLUMN focus_on TEXT;
+  ALTER TABLE tasks ADD COLUMN dropped_on TEXT;
+
+  -- One row per day that was planned in the morning or shut down at night.
+  CREATE TABLE days (
+    day         TEXT PRIMARY KEY,
+    planned_at  TEXT,
+    shutdown_at TEXT
+  );
+
+  CREATE TABLE settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
+  -- Notifications already sent, so each fires once however many bars ask.
+  CREATE TABLE notified (
+    key TEXT PRIMARY KEY,
+    at  TEXT NOT NULL
   );
   `,
 ]

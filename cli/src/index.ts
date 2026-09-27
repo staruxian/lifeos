@@ -1,13 +1,17 @@
 #!/usr/bin/env bun
 import type { Database } from "bun:sqlite"
-import { parseDay, parseWeekdays, today as todayDay, type Day } from "./dates"
+import { addDays, parseDay, parseWeekdays, today as todayDay, weekday, type Day } from "./dates"
 import { openDb, paths } from "./db"
+import { tick } from "./notify"
+import { printBooks, printEvents, printHabits, printOverview, printPlan, printSettings, printTasks, printWeek } from "./print"
+import { parseQuick } from "./quick"
+import { readSettings, writeSetting } from "./settings"
 import { buildState, writeState, type State } from "./state"
 import * as store from "./store"
 import { LifeError, type HabitKind } from "./store"
-import { printOverview, printBooks, printEvents, printHabits, printTasks } from "./print"
+import { capture, saveSnapshot, undo } from "./undo"
 
-const BOOLEAN_FLAGS = new Set(["json", "help"])
+const BOOLEAN_FLAGS = new Set(["json", "help", "off"])
 
 interface Args {
   words: string[]
@@ -90,65 +94,173 @@ function splitDue(words: string[]): { title: string; due?: string } {
   return { title: rest.join(" "), due }
 }
 
-type Printer = (state: State) => void
+function quoted(text: string): string {
+  return `“${text.length > 40 ? text.slice(0, 39) + "…" : text}”`
+}
 
-// Returns what to print once the change is saved.
-function run(db: Database, args: Args, today: Day): Printer {
-  const [group = "", verb = "", ...rest] = args.words
-  const f = args.flags
-  const on = f.has("day") ? day(f.get("day")!, today) : today
+type Printer = (state: State) => void
+const quiet: Printer = () => {}
+
+interface Context {
+  db: Database
+  today: Day
+  now: Date
+  flags: Map<string, string>
+  // Set by commands that change data, with the database as it was before.
+  change: string | null
+  before: Uint8Array | null
+  // Extra JSON for the caller (the panel), e.g. a quick-add preview.
+  extra: Record<string, unknown>
+}
+
+// Remembers the database for undo and what the change was; main saves both
+// once the change has gone through.
+function changing(ctx: Context, label: string) {
+  if (!ctx.before) ctx.before = capture(ctx.db)
+  ctx.change = label
+}
+
+// Strict mode keeps the record honest: today and yesterday only.
+function logDay(ctx: Context): Day {
+  const on = ctx.flags.has("day") ? day(ctx.flags.get("day")!, ctx.today) : ctx.today
+  if (on > ctx.today) throw new LifeError("that day has not happened yet")
+  if (readSettings(ctx.db).strict === "on" && on < addDays(ctx.today, -1))
+    throw new LifeError("strict mode: only today and yesterday can be logged")
+  return on
+}
+
+function run(ctx: Context, words: string[]): Printer {
+  const { db, today, flags: f } = ctx
+  const [group = "", verb = "", ...rest] = words
 
   switch (group) {
     case "":
     case "today":
       return printOverview
     case "state":
-      return () => {}
+      return quiet
 
     case "add":
-      return run(db, { words: ["task", "add", ...args.words.slice(1)], flags: f }, today)
+      return run(ctx, ["task", "add", ...words.slice(1)])
     case "read":
-      return run(db, { words: ["book", "log", f.get("book") ?? String(store.currentBookId(db)), ...args.words.slice(1)], flags: f }, today)
+      return run(ctx, ["book", "log", f.get("book") ?? String(store.currentBookId(db)), ...words.slice(1)])
+
+    case "quick": {
+      const parsed = parseQuick(words.slice(1).join(" "), today)
+      if (!parsed) throw new LifeError("type a task, e.g. “pay rent fri”")
+      if (parsed.kind === "read") return run(ctx, ["read", String(parsed.pages)])
+      changing(ctx, `Added ${quoted(parsed.title)}`)
+      const taskId = store.addTask(db, parsed.title, parsed.due, today)
+      if (parsed.focus) store.setFocus(db, taskId, true, today)
+      return printTasks
+    }
+    case "parse":
+      ctx.extra.parsed = parseQuick(words.slice(1).join(" "), today)
+      return () => console.log(JSON.stringify(ctx.extra.parsed))
+
+    case "undo": {
+      const change = undo(db)
+      ctx.extra.undone = change.label
+      return () => console.log(`Undid: ${change.label}`)
+    }
 
     case "task":
-    case "tasks":
+    case "tasks": {
+      const taskId = () => id(rest[0], "task")
       switch (verb) {
         case "":
         case "ls":
           return printTasks
         case "add": {
           const { title, due } = splitDue(rest)
+          changing(ctx, `Added ${quoted(title)}`)
           store.addTask(db, title, optionalDay(f.get("due") ?? due, today), today)
           return printTasks
         }
         case "done":
-          store.setTaskDone(db, id(rest[0], "task"), true, today)
+          changing(ctx, `Completed ${quoted(store.taskTitle(db, taskId()))}`)
+          store.setTaskDone(db, taskId(), true, today)
           return printTasks
         case "undo":
-          store.setTaskDone(db, id(rest[0], "task"), false, today)
+          changing(ctx, `Reopened ${quoted(store.taskTitle(db, taskId()))}`)
+          store.setTaskDone(db, taskId(), false, today)
           return printTasks
         case "toggle":
-          store.toggleTask(db, id(rest[0], "task"), today)
+          changing(ctx, `Checked ${quoted(store.taskTitle(db, taskId()))}`)
+          store.toggleTask(db, taskId(), today)
           return printTasks
-        case "due":
-          store.setTaskDue(db, id(rest[0], "task"), optionalDay(rest.slice(1).join(" ") || "none", today))
+        case "due": {
+          const due = optionalDay(rest.slice(1).join(" ") || "none", today)
+          changing(ctx, `Moved ${quoted(store.taskTitle(db, taskId()))}`)
+          store.setTaskDue(db, taskId(), due)
           return printTasks
+        }
         case "rename":
-          store.renameTask(db, id(rest[0], "task"), rest.slice(1).join(" "))
+          changing(ctx, `Renamed ${quoted(store.taskTitle(db, taskId()))}`)
+          store.renameTask(db, taskId(), rest.slice(1).join(" "))
+          return printTasks
+        case "focus":
+          changing(ctx, f.has("off") ? "Removed a priority" : `Prioritised ${quoted(store.taskTitle(db, taskId()))}`)
+          store.setFocus(db, taskId(), !f.has("off"), today)
+          return printPlan
+        case "drop":
+          changing(ctx, `Dropped ${quoted(store.taskTitle(db, taskId()))}`)
+          store.dropTask(db, taskId(), today)
           return printTasks
         case "rm":
-          store.removeTask(db, id(rest[0], "task"))
+          changing(ctx, `Deleted ${quoted(store.taskTitle(db, taskId()))}`)
+          store.removeTask(db, taskId())
           return printTasks
       }
       break
+    }
+
+    case "plan":
+      switch (verb) {
+        case "":
+        case "ls":
+          return printPlan
+        case "start":
+        case "done":
+          changing(ctx, "Planned the day")
+          store.markPlanned(db, today, ctx.now.toISOString())
+          return printPlan
+      }
+      break
+
+    case "shutdown":
+      changing(ctx, "Shut down the day")
+      store.markShutdown(db, today, ctx.now.toISOString())
+      return printOverview
+
+    case "review":
+      if (verb === "seen") {
+        const lastWeekStart = addDays(today, -weekday(today) - 7)
+        db.query("INSERT INTO settings (key, value) VALUES ('reviewed', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(lastWeekStart)
+        return quiet
+      }
+      return printWeek
+
+    case "tick":
+      return quiet
+
+    case "set":
+      if (!verb) return printSettings
+      changing(ctx, `Changed ${verb}`)
+      writeSetting(db, verb, rest.join(" "))
+      return printSettings
+    case "settings":
+      return printSettings
 
     case "habit":
-    case "habits":
+    case "habits": {
+      const habitId = () => id(rest[0], "habit")
       switch (verb) {
         case "":
         case "ls":
           return printHabits
         case "add":
+          changing(ctx, `Added ${quoted(rest.join(" "))}`)
           store.addHabit(db, {
             name: rest.join(" "),
             kind: kind(f.get("kind")),
@@ -157,20 +269,36 @@ function run(db: Database, args: Args, today: Day): Printer {
             days: weekdays(f.get("days")),
           }, today)
           return printHabits
-        case "toggle":
-          store.toggleHabit(db, id(rest[0], "habit"), on)
+        case "toggle": {
+          const on = logDay(ctx)
+          changing(ctx, `Logged ${quoted(store.habitName(db, habitId()))}`)
+          store.toggleHabit(db, habitId(), on)
           return printHabits
+        }
         case "inc":
-          store.bumpHabit(db, id(rest[0], "habit"), on, rest[1] ? int(rest[1], "amount") : 1)
+        case "dec": {
+          const on = logDay(ctx)
+          const by = rest[1] ? int(rest[1], "amount") : 1
+          changing(ctx, `Logged ${quoted(store.habitName(db, habitId()))}`)
+          store.bumpHabit(db, habitId(), on, verb === "inc" ? by : -by)
           return printHabits
-        case "dec":
-          store.bumpHabit(db, id(rest[0], "habit"), on, -(rest[1] ? int(rest[1], "amount") : 1))
+        }
+        case "set": {
+          const on = logDay(ctx)
+          changing(ctx, `Logged ${quoted(store.habitName(db, habitId()))}`)
+          store.setHabitValue(db, habitId(), on, int(rest[1], "value"))
           return printHabits
-        case "set":
-          store.setHabitValue(db, id(rest[0], "habit"), on, int(rest[1], "value"))
+        }
+        case "skip": {
+          const on = logDay(ctx)
+          const start = addDays(on, -weekday(on))
+          changing(ctx, `Skipped ${quoted(store.habitName(db, habitId()))}`)
+          store.skipHabit(db, habitId(), on, start, addDays(start, 6))
           return printHabits
+        }
         case "edit":
-          store.updateHabit(db, id(rest[0], "habit"), {
+          changing(ctx, `Edited ${quoted(store.habitName(db, habitId()))}`)
+          store.updateHabit(db, habitId(), {
             name: f.get("name"),
             target: f.has("target") ? int(f.get("target"), "target") : undefined,
             unit: f.get("unit"),
@@ -179,88 +307,119 @@ function run(db: Database, args: Args, today: Day): Printer {
           return printHabits
         case "up":
         case "down":
-          store.moveHabit(db, id(rest[0], "habit"), verb === "up" ? -1 : 1)
+          changing(ctx, "Reordered habits")
+          store.moveHabit(db, habitId(), verb === "up" ? -1 : 1)
           return printHabits
         case "rm":
-          store.removeHabit(db, id(rest[0], "habit"))
+          changing(ctx, `Deleted ${quoted(store.habitName(db, habitId()))}`)
+          store.removeHabit(db, habitId())
           return printHabits
       }
       break
+    }
 
     case "book":
-    case "books":
+    case "books": {
+      const bookId = () => id(rest[0], "book")
       switch (verb) {
         case "":
         case "ls":
           return printBooks
         case "add":
+          changing(ctx, `Added ${quoted(rest.join(" "))}`)
           store.addBook(db, rest.join(" "), int(f.get("pages"), "--pages"), today)
           return printBooks
-        case "log":
-          store.logReading(db, id(rest[0], "book"), int(rest[1], "pages"), on)
+        case "log": {
+          const on = logDay(ctx)
+          changing(ctx, `Logged pages in ${quoted(store.bookTitle(db, bookId()))}`)
+          store.logReading(db, bookId(), int(rest[1], "pages"), on)
           return printBooks
+        }
         case "edit":
-          store.updateBook(db, id(rest[0], "book"), {
+          changing(ctx, `Edited ${quoted(store.bookTitle(db, bookId()))}`)
+          store.updateBook(db, bookId(), {
             title: f.get("title"),
             totalPages: f.has("pages") ? int(f.get("pages"), "--pages") : undefined,
           })
           return printBooks
         case "rm":
-          store.removeBook(db, id(rest[0], "book"))
+          changing(ctx, `Deleted ${quoted(store.bookTitle(db, bookId()))}`)
+          store.removeBook(db, bookId())
           return printBooks
       }
       break
+    }
 
     case "event":
-    case "events":
+    case "events": {
+      const eventId = () => id(rest[0], "event")
       switch (verb) {
         case "":
         case "ls":
           return printEvents
         case "add": {
           if (!f.has("on")) throw new LifeError("when is it? add --on <date>")
-          store.addEvent(db, rest.join(" "), day(f.get("on")!, today), f.get("emoji") ?? "", today)
+          const on = day(f.get("on")!, today)
+          changing(ctx, `Added ${quoted(rest.join(" "))}`)
+          store.addEvent(db, rest.join(" "), on, f.get("emoji") ?? "", today)
           return printEvents
         }
-        case "edit":
-          store.updateEvent(db, id(rest[0], "event"), {
-            title: f.get("title"),
-            day: f.has("on") ? day(f.get("on")!, today) : undefined,
-            emoji: f.get("emoji"),
-          })
+        case "edit": {
+          const on = f.has("on") ? day(f.get("on")!, today) : undefined
+          changing(ctx, `Edited ${quoted(store.eventTitle(db, eventId()))}`)
+          store.updateEvent(db, eventId(), { title: f.get("title"), day: on, emoji: f.get("emoji") })
           return printEvents
+        }
         case "rm":
-          store.removeEvent(db, id(rest[0], "event"))
+          changing(ctx, `Deleted ${quoted(store.eventTitle(db, eventId()))}`)
+          store.removeEvent(db, eventId())
           return printEvents
       }
       break
+    }
 
     case "help":
       return () => console.log(HELP)
   }
-  throw new LifeError(`unknown command "${args.words.join(" ")}" — try lifeos help`)
+  throw new LifeError(`unknown command "${words.join(" ")}" — try lifeos help`)
 }
 
 const HELP = `lifeos — tasks, habits, books and countdowns
 
   lifeos                              today at a glance
   lifeos add <task> [due:fri]         add a task
+  lifeos quick "pay rent fri!"        add like the quick box: a date at the end, ! for a priority
   lifeos task done|undo|rm <n>        finish, reopen or delete a task
   lifeos task due <n> <date|none>     change a due date
+  lifeos task rename <n> <title>
+  lifeos task focus <n> [--off]       make it one of today's (max 3) priorities
+  lifeos task drop <n>                decide against it
+
+  lifeos plan                         today's priorities;  lifeos plan start  marks the day planned
+  lifeos shutdown                     close the day (every due task needs a decision first)
+  lifeos review                       this week and last: promises kept
+  lifeos undo                         undo the last change
 
   lifeos habit add <name> [--kind check|count|avoid] [--target 8 --unit glasses] [--days mon,wed,fri]
   lifeos habit toggle <n>             mark done (check), full (count) or slipped (avoid)
   lifeos habit inc|dec <n> [amount]   count up or down
+  lifeos habit skip <n>               skip today — once a week, keeps the streak
+  lifeos habit edit <n> [--name] [--target] [--unit] [--days]
   lifeos habit rm <n>
 
   lifeos book add <title> --pages 320
   lifeos read <pages> [--book n]      log pages for today
+  lifeos book edit <n> [--title] [--pages]
   lifeos book rm <n>
 
   lifeos event add <title> --on "nov 3" [--emoji ✈️]
+  lifeos event edit <n> [--title] [--on] [--emoji]
   lifeos event rm <n>
 
-  --day <date>   log a habit or reading on another day
+  lifeos set [key value]              settings: strict, plan, morning, remind, shutdown, bedtime, notify
+                                      e.g. lifeos set strict on · lifeos set shutdown 21:30
+
+  --day <date>   log a habit or reading on another day (strict mode: yesterday at most)
   --json         print the full state as JSON
   dates: today, tomorrow, fri, next mon, in 3 days, 2w, 3.11, nov 3, 2026-11-03
 
@@ -271,21 +430,25 @@ function main() {
   // Nothing LifeOS creates — database, its journal files, the snapshot — is
   // for other users' eyes.
   process.umask(0o077)
-  let args: Args
   const json = process.argv.includes("--json")
   try {
-    args = parseArgs(process.argv.slice(2))
+    const args = parseArgs(process.argv.slice(2))
     if (args.flags.has("help")) {
       console.log(HELP)
       return
     }
     const db = openDb()
-    const today = todayDay()
-    const print = run(db, args, today)
-    const state = buildState(db, today)
-    writeState(state)
+    const now = new Date()
+    const ctx: Context = { db, today: todayDay(now), now, flags: args.flags, change: null, before: null, extra: {} }
+    const print = run(ctx, args.words)
+    if (ctx.change && ctx.before) saveSnapshot(ctx.before, ctx.change)
+    const state = buildState(db, ctx.today, now)
+    state.change = ctx.change ? { label: ctx.change, at: now.toISOString() } : null
+    if (args.words[0] === "tick") tick(db, state, now)
+    if (args.words[0] !== "parse") writeState(state)
     db.close()
-    if (json || args.words[0] === "state") console.log(JSON.stringify(state))
+    if (json) console.log(JSON.stringify(args.words[0] === "parse" ? { parsed: ctx.extra.parsed ?? null } : { ...state, ...ctx.extra }))
+    else if (args.words[0] === "state") console.log(JSON.stringify(state))
     else print(state)
   } catch (error) {
     const message = error instanceof LifeError ? error.message : error instanceof Error ? error.message : String(error)

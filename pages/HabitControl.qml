@@ -15,7 +15,17 @@ Item {
   Loader {
     id: loader
     anchors.centerIn: parent
-    sourceComponent: !root.habit ? null : root.habit.kind === "count" ? counter : root.habit.kind === "avoid" ? avoid : check
+    sourceComponent: !root.habit ? null : root.habit.skipped ? skipped : root.habit.kind === "count" ? counter : root.habit.kind === "avoid" ? avoid : check
+  }
+
+  // A skipped day: tap to take the skip back.
+  Component {
+    id: skipped
+    Chip {
+      text: "Skipped"
+      icon: "\u{f04ad}"
+      onClicked: root.host.unskipHabit(root.habit.id)
+    }
   }
 
   Component {

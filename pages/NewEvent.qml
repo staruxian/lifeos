@@ -7,7 +7,20 @@ Card {
   id: root
 
   property var host: null
-  property bool expanded: false
+  // Given an event, the form edits it.
+  property var event: null
+  property bool expanded: event !== null
+  signal closed()
+
+  function load() {
+    if (!event) return
+    titleField.text = event.title
+    dateField.text = event.day
+    emoji = event.emoji
+    Qt.callLater(titleField.focusInput)
+  }
+  onEventChanged: load()
+  Component.onCompleted: load()
   property string emoji: ""
   readonly property string shownEmoji: emoji !== "" ? emoji : Model.guessEmoji(titleField.text)
   readonly property bool valid: titleField.text.trim() !== "" && dateField.text.trim() !== ""
@@ -21,12 +34,18 @@ Card {
     titleField.clear()
     dateField.clear()
     emoji = ""
-    expanded = false
+    expanded = event !== null
+    closed()
   }
 
   function submit() {
     if (!valid) {
       if (titleField.text.trim() !== "") dateField.focusInput()
+      return
+    }
+    if (event) {
+      host.editEvent(event.id, titleField.text.trim(), dateField.text.trim(), shownEmoji)
+      closed()
       return
     }
     host.addEvent(titleField.text.trim(), dateField.text.trim(), shownEmoji)
@@ -117,6 +136,6 @@ Card {
     anchors.right: parent.right
     spacing: Theme.s(8)
     PillButton { text: "Cancel"; primary: false; onClicked: root.reset() }
-    PillButton { text: "Start countdown"; active: root.valid; onClicked: root.submit() }
+    PillButton { text: root.event ? "Save" : "Start countdown"; active: root.valid; onClicked: root.submit() }
   }
 }

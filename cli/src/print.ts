@@ -1,4 +1,4 @@
-import type { Book, Cell, Event, Habit, State, Task } from "./state"
+import type { Book, Cell, Event, Habit, State, Task, Week } from "./state"
 import { fromDay } from "./dates"
 
 const color = process.stdout.isTTY && !process.env.NO_COLOR
@@ -22,7 +22,7 @@ function dueLabel(task: Task): string {
 
 function taskLine(task: Task): string {
   const box = task.done ? green("●") : dim("○")
-  const title = task.done ? dim(task.title) : task.title
+  const title = (task.focus ? yellow("★ ") : "") + (task.done ? dim(task.title) : task.title)
   const due = dueLabel(task)
   return `  ${box} ${dim(String(task.id).padStart(3))}  ${title}${due ? "  " + dim("·") + " " + due : ""}`
 }
@@ -45,6 +45,8 @@ function heatCell(cell: Cell): string {
       return red("█")
     case "empty":
       return dim("□")
+    case "skip":
+      return dim("–")
     default:
       return green(HEAT[cell.level]!)
   }
@@ -52,6 +54,7 @@ function heatCell(cell: Cell): string {
 
 function habitStatus(h: Habit): string {
   if (h.kind === "count") return `${h.value}/${h.target}${h.unit ? " " + h.unit : ""}`
+  if (h.skipped) return dim("skipped today")
   if (h.kind === "avoid") return h.value > 0 ? red("slipped") : green(`${h.streak}d clean`)
   return h.done ? green("done") : h.scheduledToday ? dim("not yet") : dim("rest day")
 }
@@ -153,4 +156,40 @@ export function printOverview(state: State) {
 
   if (!tasks.length && !due.length && !book && !state.events.length)
     console.log(dim("\nA clean slate. Try: lifeos add <task>, lifeos habit add <name>, lifeos help"))
+}
+
+export function printPlan(state: State) {
+  const d = state.day
+  heading(`Today's priorities  ${dim(`${state.summary.prioritiesDone}/${state.summary.priorities} · max 3`)}`)
+  if (d.priorities.length === 0) console.log(dim("  None yet. Pick up to three: lifeos task focus <n>"))
+  d.priorities.forEach((t) => console.log(taskLine(t)))
+  console.log(dim(`\n${d.planned ? "Day planned." : "Not planned yet — lifeos plan start when you're set."}${d.shutdown ? " Shut down." : ""}`))
+}
+
+function weekLine(name: string, w: Week) {
+  const pct = w.due === 0 ? dim("—") : bold(`${Math.round(w.rate * 100)}%`)
+  console.log(`  ${name.padEnd(10)} ${pct} ${dim(`promises kept (${w.kept}/${w.due})`)}  ${w.perfectDays} perfect day${w.perfectDays === 1 ? "" : "s"}  ${w.tasksDone} tasks  ${w.pages} pages`)
+  if (w.best) console.log(dim(`             best: ${w.best.name} ${Math.round(w.best.rate * 100)}%${w.worst ? ` · needs love: ${w.worst.name} ${Math.round(w.worst.rate * 100)}%` : ""}`))
+}
+
+export function printWeek(state: State) {
+  heading("Weekly score")
+  weekLine("This week", state.review.thisWeek)
+  weekLine("Last week", state.review.lastWeek)
+}
+
+export function printSettings(state: State) {
+  heading("Settings")
+  const s = state.settings
+  const rows: [string, string, string][] = [
+    ["strict", s.strict, "only today/yesterday can be logged; plan and shutdown open on their own"],
+    ["plan", s.plan, "ask for the day's priorities"],
+    ["morning", s.morning, "plan reminder and countdown news"],
+    ["remind", s.remind, "unfinished habits reminder"],
+    ["shutdown", s.shutdown, "decide on unfinished tasks"],
+    ["bedtime", s.bedtime, "last call an hour before"],
+    ["notify", s.notify, "desktop notifications"],
+  ]
+  for (const [k, v, what] of rows) console.log(`  ${k.padEnd(9)} ${bold(v.padEnd(6))} ${dim(what)}`)
+  console.log(dim("\n  change with: lifeos set <key> <value>"))
 }

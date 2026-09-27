@@ -1,12 +1,15 @@
 import QtQuick
 import "../components"
 
-// "New habit" row that opens into a small form.
+// "New habit" row that opens into a small form. Given a `habit`, the same
+// form edits it instead (its kind stays what it is).
 Card {
   id: root
 
   property var host: null
-  property bool expanded: false
+  property var habit: null
+  property bool expanded: habit !== null
+  signal closed()
   property string kind: "check"
   property int days: 127
 
@@ -33,8 +36,21 @@ Card {
     unitField.clear()
     kind = "check"
     days = 127
-    expanded = false
+    expanded = habit !== null
+    closed()
   }
+
+  function load() {
+    if (!habit) return
+    kind = habit.kind
+    days = habit.days
+    nameField.text = habit.name
+    targetField.text = habit.kind === "count" ? String(habit.target) : ""
+    unitField.text = habit.unit
+    Qt.callLater(nameField.focusInput)
+  }
+  onHabitChanged: load()
+  Component.onCompleted: load()
 
   function daysArg() {
     var names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -45,6 +61,16 @@ Card {
 
   function submit() {
     if (!valid) return
+    if (habit) {
+      host.editHabit(habit.id, {
+        name: nameField.text.trim(),
+        target: kind === "count" ? Number(targetField.text) || 1 : 0,
+        unit: unitField.text.trim(),
+        days: kind === "avoid" ? "" : daysArg()
+      })
+      closed()
+      return
+    }
     host.addHabit({
       name: nameField.text.trim(),
       kind: kind,
@@ -114,6 +140,8 @@ Card {
     SegmentedControl {
       width: parent.width
       compact: true
+      enabled: root.habit === null
+      opacity: enabled ? 1 : 0.5
       model: root.kinds
       current: root.kind
       onPicked: function(key) { root.kind = key }
@@ -184,6 +212,6 @@ Card {
     spacing: Theme.s(8)
 
     PillButton { text: "Cancel"; primary: false; onClicked: root.reset() }
-    PillButton { text: "Add habit"; active: root.valid; onClicked: root.submit() }
+    PillButton { text: root.habit ? "Save" : "Add habit"; active: root.valid; onClicked: root.submit() }
   }
 }

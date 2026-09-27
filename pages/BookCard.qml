@@ -11,6 +11,8 @@ Card {
   property var book: null
   property var host: null
   property bool compact: false
+  property bool editing: false
+  property var editTarget: null
 
   function focusLog() { pagesField.focusInput() }
 
@@ -48,7 +50,19 @@ Card {
       }
     }
 
+    IconButton {
+      id: editButton
+      anchors.right: deleteButton.left
+      anchors.top: parent.top
+      visible: !root.compact && root.hovered && !root.editing
+      icon: "\u{f03eb}"
+      tooltip: "Edit"
+      color: Theme.tertiary
+      onClicked: { root.editTarget = root.book; root.editing = true }
+    }
+
     DeleteButton {
+      id: deleteButton
       anchors.right: percentText.left
       anchors.rightMargin: Theme.s(4)
       anchors.top: parent.top
@@ -67,6 +81,16 @@ Card {
       font.weight: Font.Bold
       font.features: ({ "tnum": 1 })
     }
+  }
+
+  NewBook {
+    visible: root.editing
+    width: parent.width
+    host: root.host
+    book: root.editing ? root.editTarget : null
+    color: "transparent"
+    padding: 0
+    onClosed: root.editing = false
   }
 
   ProgressBar {

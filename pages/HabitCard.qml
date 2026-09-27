@@ -11,6 +11,18 @@ Card {
   property var host: null
   property bool first: false
   property bool last: false
+  property bool editing: false
+  // The habit as it was when editing began, so a refresh cannot reset the form.
+  property var editTarget: null
+  // Strict mode: a habit with a streak is only deleted by typing its name.
+  property bool confirmingDelete: false
+
+  function requestDelete() {
+    if (root.host && root.host.strict && root.habit.streak > 0) {
+      root.confirmingDelete = true
+      Qt.callLater(confirmField.focusInput)
+    } else root.host.removeHabit(root.habit.id)
+  }
 
   width: parent ? parent.width : implicitWidth
   hoverable: true
@@ -75,10 +87,23 @@ Card {
       anchors.rightMargin: Theme.s(6)
       anchors.verticalCenter: parent.verticalCenter
       spacing: 0
-      opacity: root.hovered || remove.armed ? 1 : 0
+      opacity: (root.hovered || remove.armed) && !root.editing ? 1 : 0
       visible: opacity > 0
       Behavior on opacity { NumberAnimation { duration: Theme.fast } }
 
+      IconButton {
+        visible: root.habit && root.habit.scheduledToday && root.habit.canSkip && !root.habit.done && !root.habit.skipped
+        icon: "\u{f04ad}"
+        tooltip: "Skip today — once a week, keeps the streak"
+        color: Theme.tertiary
+        onClicked: root.host.skipHabit(root.habit.id)
+      }
+      IconButton {
+        icon: "\u{f03eb}"
+        tooltip: "Edit"
+        color: Theme.tertiary
+        onClicked: { root.editTarget = root.habit; root.editing = true }
+      }
       IconButton {
         visible: !root.first
         icon: "\u{f005d}"
@@ -95,7 +120,7 @@ Card {
       }
       DeleteButton {
         id: remove
-        onConfirmed: root.host.removeHabit(root.habit.id)
+        onConfirmed: root.requestDelete()
       }
     }
 
@@ -108,7 +133,47 @@ Card {
     }
   }
 
+  // Strict delete: type the name to let a streak go.
+  Column {
+    visible: root.confirmingDelete
+    width: parent.width
+    spacing: Theme.s(8)
+
+    Text {
+      width: parent.width
+      text: "This habit is on a " + (root.habit ? root.habit.streak : 0) + "-day streak. Type “" + (root.habit ? root.habit.name : "") + "” to delete it."
+      color: Theme.danger
+      font.family: Theme.font
+      font.pixelSize: Theme.footnote
+      wrapMode: Text.WordWrap
+    }
+    Field {
+      id: confirmField
+      width: parent.width
+      placeholder: root.habit ? root.habit.name : ""
+      clearOnSubmit: false
+      onSubmitted: function(text) {
+        if (text.trim().toLowerCase() === root.habit.name.trim().toLowerCase()) {
+          root.confirmingDelete = false
+          root.host.removeHabit(root.habit.id)
+        }
+      }
+      onEscaped: { clear(); root.confirmingDelete = false }
+    }
+  }
+
+  NewHabit {
+    visible: root.editing
+    width: parent.width
+    host: root.host
+    habit: root.editing ? root.editTarget : null
+    color: "transparent"
+    padding: 0
+    onClosed: root.editing = false
+  }
+
   Heatmap {
+    visible: !root.editing
     anchors.horizontalCenter: parent.horizontalCenter
     habit: root.habit
     // The largest square that fits every week, capped so it stays delicate.

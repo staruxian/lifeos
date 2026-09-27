@@ -6,7 +6,19 @@ Card {
   id: root
 
   property var host: null
-  property bool expanded: false
+  // Given a book, the form edits it.
+  property var book: null
+  property bool expanded: book !== null
+  signal closed()
+
+  function load() {
+    if (!book) return
+    titleField.text = book.title
+    pagesField.text = String(book.total)
+    Qt.callLater(titleField.focusInput)
+  }
+  onBookChanged: load()
+  Component.onCompleted: load()
   readonly property bool valid: titleField.text.trim() !== "" && Number(pagesField.text) > 0
 
   function openForm() {
@@ -17,12 +29,18 @@ Card {
   function reset() {
     titleField.clear()
     pagesField.clear()
-    expanded = false
+    expanded = book !== null
+    closed()
   }
 
   function submit() {
     if (!valid) {
       if (titleField.text.trim() !== "") pagesField.focusInput()
+      return
+    }
+    if (book) {
+      host.editBook(book.id, titleField.text.trim(), Number(pagesField.text))
+      closed()
       return
     }
     host.addBook(titleField.text.trim(), Number(pagesField.text))
@@ -81,6 +99,6 @@ Card {
     anchors.right: parent.right
     spacing: Theme.s(8)
     PillButton { text: "Cancel"; primary: false; onClicked: root.reset() }
-    PillButton { text: "Start reading"; active: root.valid; onClicked: root.submit() }
+    PillButton { text: root.book ? "Save" : "Start reading"; active: root.valid; onClicked: root.submit() }
   }
 }
