@@ -192,6 +192,7 @@ Panel {
             spacing: Theme.s(1)
 
             Text {
+              textFormat: Text.PlainText
               text: root.snap && root.snap.day
                 ? (root.snap.day.greeting + "  ·  " + Model.weekdayName(root.snap.today)).toUpperCase()
                 : ""
@@ -203,6 +204,7 @@ Panel {
             }
 
             Text {
+              textFormat: Text.PlainText
               text: root.snap ? Model.longDate(root.snap.today) : "LifeOS"
               color: Theme.label
               font.family: Theme.font
@@ -235,6 +237,7 @@ Panel {
                 : root.hostWidget && root.hostWidget.alert === "warn" ? Theme.fire : Theme.good
 
               Text {
+                textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: Model.percent(dayRing.value)
                 color: Theme.secondary
@@ -282,13 +285,14 @@ Panel {
               id: backRow
               anchors.centerIn: parent
               spacing: Theme.s(4)
-              Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; color: Theme.secondary; font.family: Theme.iconFont; font.pixelSize: Theme.body }
-              Text { anchors.verticalCenter: parent.verticalCenter; text: "Today"; color: Theme.secondary; font.family: Theme.font; font.pixelSize: Theme.callout; font.weight: Font.Medium }
+              Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0141}"; color: Theme.secondary; font.family: Theme.iconFont; font.pixelSize: Theme.body }
+              Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: "Today"; color: Theme.secondary; font.family: Theme.font; font.pixelSize: Theme.callout; font.weight: Font.Medium }
             }
             MouseArea { id: backMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.leaveMode() }
           }
 
           Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: root.modeTitles[root.mode] || ""
             color: Theme.label
@@ -306,6 +310,7 @@ Panel {
           spacing: Theme.s(12)
 
           Text {
+            textFormat: Text.PlainText
             width: parent.width
             text: "One more step"
             color: Theme.label
@@ -314,6 +319,7 @@ Panel {
             font.weight: Font.Bold
           }
           Text {
+            textFormat: Text.PlainText
             width: parent.width
             text: "LifeOS keeps your data in a small local database, run by Bun. Install it and this panel comes alive — nothing else to set up."
             color: Theme.secondary
@@ -328,6 +334,7 @@ Panel {
             radius: Theme.radiusControl
             color: Theme.fillStrong
             Text {
+              textFormat: Text.PlainText
               id: cmdText
               anchors.centerIn: parent
               text: root.hostWidget ? root.hostWidget.setupCommand : ""
@@ -405,6 +412,7 @@ Panel {
           spacing: Theme.s(14)
 
           Text {
+            textFormat: Text.PlainText
             id: toastLabel
             readonly property real room: banner.maxWidth - Theme.s(32) - (undoLabel.visible ? undoLabel.implicitWidth + toastRow.spacing : 0)
             anchors.verticalCenter: parent.verticalCenter
@@ -418,6 +426,7 @@ Panel {
           }
 
           Text {
+            textFormat: Text.PlainText
             id: undoLabel
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.toastIsError && !root.toastIsMilestone && root.toast.indexOf("Undid") !== 0

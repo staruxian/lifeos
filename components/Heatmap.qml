@@ -38,6 +38,7 @@ Item {
     model: root.weeks.length
 
     Text {
+      textFormat: Text.PlainText
       required property int index
       readonly property var first: root.weeks[index][0]
       readonly property var date: Model.parseDay(first.day)
@@ -56,6 +57,7 @@ Item {
     model: [["Mon", 0], ["Wed", 2], ["Fri", 4]]
 
     Text {
+      textFormat: Text.PlainText
       required property var modelData
       x: 0
       y: root.monthHeight + modelData[1] * root.pitch + (root.cell - height) / 2

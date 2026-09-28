@@ -49,6 +49,7 @@ DesignBase {
     spacing: 2
 
     Text {
+      textFormat: Text.PlainText
       anchors.horizontalCenter: parent.horizontalCenter
       text: Qt.formatTime(lock.now, "HH:mm")
       color: Color.lock.text
@@ -57,6 +58,7 @@ DesignBase {
       font.weight: Font.Light
     }
     Text {
+      textFormat: Text.PlainText
       anchors.horizontalCenter: parent.horizontalCenter
       text: Qt.formatDate(lock.now, "dddd, MMMM d")
       color: Color.lock.placeholder
@@ -100,6 +102,7 @@ DesignBase {
       spacing: 8
 
       Text {
+        textFormat: Text.PlainText
         visible: lock.priorities.length > 0
         text: "TODAY"
         color: Qt.rgba(1, 1, 1, 0.5)
@@ -114,8 +117,9 @@ DesignBase {
         Row {
           required property var modelData
           spacing: 10
-          Text { text: modelData.done ? "✓" : "★"; color: modelData.done ? "#30d158" : "#ff9f0a"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
+          Text { textFormat: Text.PlainText; text: modelData.done ? "✓" : "★"; color: modelData.done ? "#30d158" : "#ff9f0a"; font.pixelSize: 14; anchors.verticalCenter: parent.verticalCenter }
           Text {
+            textFormat: Text.PlainText
             width: 381 - 40 - 24
             text: modelData.title
             color: modelData.done ? Qt.rgba(1, 1, 1, 0.45) : "white"
@@ -128,6 +132,7 @@ DesignBase {
       }
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         visible: lock.habitsLeft > 0 || lock.next !== null
         topPadding: lock.priorities.length > 0 ? 4 : 0

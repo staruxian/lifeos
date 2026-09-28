@@ -48,6 +48,7 @@ PageBase {
       spacing: Theme.s(12)
 
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         text: attention.kind === "plan" ? "\u{f0599}" : attention.kind === "shutdown" ? "\u{f0594}" : "\u{f0238}"
         color: attention.kind === "urgent" ? Theme.danger : attention.kind === "plan" ? Theme.good : Theme.fire
@@ -60,6 +61,7 @@ PageBase {
         width: parent.width - Theme.s(40) - (ctaButton.visible ? ctaButton.width + Theme.s(12) : 0)
         spacing: Theme.s(1)
         Text {
+          textFormat: Text.PlainText
           width: parent.width
           text: {
             var k = attention.kind
@@ -75,6 +77,7 @@ PageBase {
           elide: Text.ElideRight
         }
         Text {
+          textFormat: Text.PlainText
           width: parent.width
           text: {
             var k = attention.kind
@@ -142,8 +145,9 @@ PageBase {
     Row {
       anchors.centerIn: parent
       spacing: Theme.s(8)
-      Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0e1e}"; color: Theme.good; font.family: Theme.iconFont; font.pixelSize: Theme.headline }
+      Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0e1e}"; color: Theme.good; font.family: Theme.iconFont; font.pixelSize: Theme.headline }
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         text: root.day && root.day.shutdown ? "Day complete and closed. Well done." : "Day complete. Well done."
         color: Theme.good
@@ -233,6 +237,7 @@ PageBase {
         height: Theme.rowHeight + Theme.s(2)
 
         Text {
+          textFormat: Text.PlainText
           id: plus
           anchors.left: parent.left
           anchors.leftMargin: Theme.s(11)

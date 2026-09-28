@@ -52,6 +52,7 @@ ViewBase {
         border.color: task ? Theme.alpha(Theme.fire, 0.35) : Theme.quaternary
 
         Text {
+          textFormat: Text.PlainText
           id: star
           anchors.left: parent.left
           anchors.leftMargin: Theme.s(14)
@@ -63,6 +64,7 @@ ViewBase {
           font.weight: Font.DemiBold
         }
         Text {
+          textFormat: Text.PlainText
           anchors.left: star.right
           anchors.leftMargin: Theme.s(12)
           anchors.right: remove.left
@@ -126,6 +128,7 @@ ViewBase {
             height: Theme.rowHeight + Theme.s(2)
 
             Text {
+              textFormat: Text.PlainText
               anchors.left: parent.left
               anchors.leftMargin: Theme.s(12)
               anchors.right: due.left
@@ -138,6 +141,7 @@ ViewBase {
               elide: Text.ElideRight
             }
             Text {
+              textFormat: Text.PlainText
               id: due
               anchors.right: pick.left
               anchors.rightMargin: Theme.s(6)
@@ -165,6 +169,7 @@ ViewBase {
   }
 
   Text {
+    textFormat: Text.PlainText
     visible: root.habitsToday.length > 0
     width: parent.width
     leftPadding: Theme.s(4)

@@ -43,8 +43,8 @@ ViewBase {
 
         Column {
           anchors.centerIn: parent
-          Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.n; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.headline; font.weight: Font.Bold; font.features: ({ "tnum": 1 }) }
-          Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: Theme.tertiary; font.family: Theme.font; font.pixelSize: Theme.caption }
+          Text { textFormat: Text.PlainText; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.n; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.headline; font.weight: Font.Bold; font.features: ({ "tnum": 1 }) }
+          Text { textFormat: Text.PlainText; anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: Theme.tertiary; font.family: Theme.font; font.pixelSize: Theme.caption }
         }
       }
     }
@@ -71,6 +71,7 @@ ViewBase {
           height: Math.max(titleText.implicitHeight, Theme.s(18))
 
           Text {
+            textFormat: Text.PlainText
             id: titleText
             anchors.left: parent.left
             anchors.right: dueText.left
@@ -83,6 +84,7 @@ ViewBase {
             elide: Text.ElideRight
           }
           Text {
+            textFormat: Text.PlainText
             id: dueText
             anchors.right: parent.right
             text: Model.dueLabel(modelData)
@@ -166,6 +168,7 @@ ViewBase {
           Behavior on scale { NumberAnimation { duration: Theme.fast; easing.type: Easing.OutBack } }
 
           Text {
+            textFormat: Text.PlainText
             anchors.centerIn: parent
             text: root.faces[index]
             font.family: Theme.emojiFont

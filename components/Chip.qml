@@ -28,6 +28,7 @@ Rectangle {
     spacing: Theme.s(5)
 
     Text {
+      textFormat: Text.PlainText
       visible: root.icon !== ""
       anchors.verticalCenter: parent.verticalCenter
       text: root.icon
@@ -37,6 +38,7 @@ Rectangle {
     }
 
     Text {
+      textFormat: Text.PlainText
       anchors.verticalCenter: parent.verticalCenter
       text: root.text
       color: root.selected ? Theme.label : Theme.secondary

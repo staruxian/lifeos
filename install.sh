@@ -80,6 +80,7 @@ if [[ "$here" != "$link" ]]; then
     mkdir -p "$plugins_dir"
     ln -s "$here" "$link"
     record link "$link" "$here"
+    linked=1
   fi
 fi
 
@@ -93,7 +94,9 @@ if [[ -d "$plugins_dir/io.github.sirjul1337.lock-explorer" ]]; then
   fi
 fi
 
-if command -v omarchy-shell >/dev/null && omarchy-shell shell ping >/dev/null 2>&1; then
+# Only a checkout this run just linked is switched on; an installed or
+# deliberately disabled plugin keeps whatever state you gave it.
+if [[ -n "${linked:-}" ]] && command -v omarchy-shell >/dev/null && omarchy-shell shell ping >/dev/null 2>&1; then
   omarchy-shell shell rescanPlugins >/dev/null
   omarchy plugin enable "$plugin_id" --section right >/dev/null 2>&1 || true
 fi

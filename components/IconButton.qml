@@ -26,6 +26,7 @@ Item {
     Behavior on scale { NumberAnimation { duration: Theme.fast; easing.type: Easing.OutCubic } }
 
     Text {
+      textFormat: Text.PlainText
       anchors.centerIn: parent
       text: root.icon
       color: mouse.containsMouse ? root.hoverColor : root.color

@@ -45,6 +45,7 @@ Card {
         width: parent.width
 
         Text {
+          textFormat: Text.PlainText
           id: name
           anchors.verticalCenter: parent.verticalCenter
           width: Math.min(implicitWidth, parent.width - (flame.visible ? flame.width + parent.spacing : 0))
@@ -68,6 +69,7 @@ Card {
       }
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: {
           if (!root.habit) return ""
@@ -141,6 +143,7 @@ Card {
     spacing: Theme.s(8)
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width
       text: "This habit is on a " + (root.habit ? root.habit.streak : 0) + "-day streak. Type “" + (root.habit ? root.habit.name : "") + "” to delete it."
       color: Theme.danger

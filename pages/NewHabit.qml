@@ -103,6 +103,7 @@ Card {
       spacing: Theme.s(10)
 
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         text: "\u{f0415}"
         color: Theme.good
@@ -110,6 +111,7 @@ Card {
         font.pixelSize: Theme.headline
       }
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         text: "New habit"
         color: Theme.good
@@ -152,6 +154,7 @@ Card {
     }
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width
       leftPadding: Theme.s(4)
       text: root.kindHint

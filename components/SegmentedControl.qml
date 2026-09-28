@@ -51,6 +51,7 @@ Rectangle {
         height: parent.height
 
         Text {
+          textFormat: Text.PlainText
           anchors.centerIn: parent
           text: modelData.label
           color: index === root.index ? Theme.label : (mouse.containsMouse ? Theme.secondary : Theme.tertiary)

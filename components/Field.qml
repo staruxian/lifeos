@@ -31,6 +31,7 @@ Rectangle {
   HoverHandler { id: hover; cursorShape: Qt.IBeamCursor }
 
   Text {
+    textFormat: Text.PlainText
     id: glyph
     visible: root.icon !== ""
     anchors.left: parent.left
@@ -77,6 +78,7 @@ Rectangle {
     }
 
     Text {
+      textFormat: Text.PlainText
       anchors.fill: parent
       verticalAlignment: Text.AlignVCenter
       visible: input.text === "" && !input.preeditText

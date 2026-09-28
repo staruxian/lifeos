@@ -18,6 +18,7 @@ Item {
     spacing: Theme.s(6)
 
     Text {
+      textFormat: Text.PlainText
       anchors.horizontalCenter: parent.horizontalCenter
       text: root.icon
       color: Theme.quaternary
@@ -27,6 +28,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width
       horizontalAlignment: Text.AlignHCenter
       text: root.title
@@ -38,6 +40,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width
       horizontalAlignment: Text.AlignHCenter
       visible: root.hint !== ""

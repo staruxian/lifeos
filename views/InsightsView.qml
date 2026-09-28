@@ -35,6 +35,7 @@ ViewBase {
           width: parent.width
           height: line.implicitHeight + Theme.s(22)
           Text {
+            textFormat: Text.PlainText
             id: glyph
             anchors.left: parent.left
             anchors.leftMargin: Theme.s(14)
@@ -45,6 +46,7 @@ ViewBase {
             font.pixelSize: Theme.headline
           }
           Text {
+            textFormat: Text.PlainText
             id: line
             anchors.left: parent.left
             anchors.leftMargin: Theme.s(44)
@@ -150,6 +152,7 @@ ViewBase {
               }
             }
             Text {
+              textFormat: Text.PlainText
               anchors.horizontalCenter: parent.horizontalCenter
               text: Model.WEEKDAYS[index].charAt(0)
               color: Theme.tertiary
@@ -184,13 +187,14 @@ ViewBase {
           Item {
             width: parent.width
             height: Theme.rowHeight + Theme.s(2)
-            Text { anchors.left: parent.left; anchors.leftMargin: Theme.s(12); anchors.verticalCenter: parent.verticalCenter; text: modelData.name; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.body }
+            Text { textFormat: Text.PlainText; anchors.left: parent.left; anchors.leftMargin: Theme.s(12); anchors.verticalCenter: parent.verticalCenter; text: modelData.name; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.body }
             Row {
               anchors.right: parent.right
               anchors.rightMargin: Theme.s(12)
               anchors.verticalCenter: parent.verticalCenter
               spacing: Theme.s(8)
               Text {
+                textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 visible: modelData.current > 0
                 text: "now " + modelData.current
@@ -199,6 +203,7 @@ ViewBase {
                 font.pixelSize: Theme.footnote
               }
               Text {
+                textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 text: modelData.best + (modelData.best === 1 ? " day" : " days")
                 color: modelData.current >= modelData.best ? Theme.fire : Theme.label

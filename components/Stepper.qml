@@ -32,6 +32,7 @@ Rectangle {
   }
 
   Text {
+    textFormat: Text.PlainText
     id: label
     anchors.left: minus.right
     anchors.verticalCenter: parent.verticalCenter

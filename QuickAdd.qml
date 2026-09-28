@@ -134,6 +134,7 @@ Item {
             trackColor: Theme.fillStrong
 
             Text {
+              textFormat: Text.PlainText
               anchors.centerIn: parent
               text: root.done ? "\u{f012c}" : "\u{f0415}"
               color: root.done ? Theme.good : Theme.secondary
@@ -160,6 +161,7 @@ Item {
             Keys.onEscapePressed: root.close()
 
             Text {
+              textFormat: Text.PlainText
               anchors.fill: parent
               verticalAlignment: Text.AlignVCenter
               visible: field.text === ""
@@ -177,6 +179,7 @@ Item {
           height: Theme.s(18)
 
           Text {
+            textFormat: Text.PlainText
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             text: error.text !== "" ? "" : root.done ? "Added" : root.previewText !== "" ? root.previewText : "fri · next mon · nov 3 · ! for a priority · read 20"
@@ -187,6 +190,7 @@ Item {
           }
 
           Text {
+            textFormat: Text.PlainText
             id: error
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
@@ -196,6 +200,7 @@ Item {
           }
 
           Text {
+            textFormat: Text.PlainText
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: "↵ add   esc close"

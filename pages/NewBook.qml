@@ -62,8 +62,8 @@ Card {
       anchors.leftMargin: Theme.s(10)
       anchors.verticalCenter: parent.verticalCenter
       spacing: Theme.s(10)
-      Text { anchors.verticalCenter: parent.verticalCenter; text: "\u{f0415}"; color: Theme.good; font.family: Theme.iconFont; font.pixelSize: Theme.headline }
-      Text { anchors.verticalCenter: parent.verticalCenter; text: "Add a book"; color: Theme.good; font.family: Theme.font; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
+      Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: "\u{f0415}"; color: Theme.good; font.family: Theme.iconFont; font.pixelSize: Theme.headline }
+      Text { textFormat: Text.PlainText; anchors.verticalCenter: parent.verticalCenter; text: "Add a book"; color: Theme.good; font.family: Theme.font; font.pixelSize: Theme.body; font.weight: Font.DemiBold }
     }
 
     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openForm() }

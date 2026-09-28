@@ -16,9 +16,16 @@ export interface Note {
 
 export type Sender = (note: Note) => void
 
+// Notification bodies may be read as markup (the freedesktop spec allows a
+// small HTML subset), so text from task, habit and people names is escaped:
+// a "<b>" in a name shows as typed, never as formatting or an image.
+export function escapeMarkup(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
+
 export const notifySend: Sender = (note) => {
   try {
-    Bun.spawnSync(["notify-send", "--app-name=LifeOS", `--urgency=${note.urgent ? "critical" : "normal"}`, note.title, note.body], {
+    Bun.spawnSync(["notify-send", "--app-name=LifeOS", `--urgency=${note.urgent ? "critical" : "normal"}`, note.title, escapeMarkup(note.body)], {
       stdout: "ignore",
       stderr: "ignore",
     })

@@ -74,6 +74,7 @@ ViewBase {
         spacing: Theme.s(8)
 
         Text {
+          textFormat: Text.PlainText
           x: Theme.s(12)
           text: "Tone"
           color: Theme.label
@@ -90,6 +91,7 @@ ViewBase {
           onPicked: function(key) { root.host.setSetting("tone", key) }
         }
         Text {
+          textFormat: Text.PlainText
           x: Theme.s(12)
           width: parent.width - Theme.s(24)
           text: {
@@ -128,6 +130,7 @@ ViewBase {
   }
 
   Text {
+    textFormat: Text.PlainText
     width: parent.width
     leftPadding: Theme.s(4)
     text: "Keys: n add · p plan · s shutdown · w week · u undo · 1–5 tabs\nQuick add from anywhere: bind  omarchy-shell staruxian.lifeos quickadd"

@@ -31,6 +31,7 @@ Card {
       color: root.percent >= 80 ? Theme.good : root.percent >= 50 ? Theme.fire : Theme.danger
 
       Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.week && root.week.due > 0 ? root.percent + "%" : "—"
         color: Theme.label
@@ -49,6 +50,7 @@ Card {
       spacing: Theme.s(3)
 
       Text {
+        textFormat: Text.PlainText
         text: root.title.toUpperCase()
         color: Theme.tertiary
         font.family: Theme.font
@@ -57,6 +59,7 @@ Card {
         font.letterSpacing: 0.9
       }
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: !root.week || root.week.due === 0 ? "Nothing promised yet"
           : root.week.kept + " of " + root.week.due + " promises kept"
@@ -67,6 +70,7 @@ Card {
         wrapMode: Text.WordWrap
       }
       Text {
+        textFormat: Text.PlainText
         visible: root.delta !== 0
         text: (root.delta > 0 ? "▲ " : "▼ ") + Math.abs(root.delta) + "% vs the week before"
         color: root.delta > 0 ? Theme.good : Theme.danger
@@ -99,6 +103,7 @@ Card {
           anchors.centerIn: parent
           spacing: Theme.s(1)
           Text {
+            textFormat: Text.PlainText
             anchors.horizontalCenter: parent.horizontalCenter
             text: String(modelData.n)
             color: Theme.label
@@ -108,6 +113,7 @@ Card {
             font.features: ({ "tnum": 1 })
           }
           Text {
+            textFormat: Text.PlainText
             anchors.horizontalCenter: parent.horizontalCenter
             text: modelData.label
             color: Theme.tertiary
@@ -120,6 +126,7 @@ Card {
   }
 
   Text {
+    textFormat: Text.PlainText
     visible: root.week !== null && (root.week.best !== null || root.week.worst !== null)
     width: parent.width
     text: {

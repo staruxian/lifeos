@@ -63,6 +63,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       id: title
       visible: !root.editing
       anchors.left: check.right
@@ -131,6 +132,7 @@ Item {
         color: root.moving || dueMouse.containsMouse ? Theme.fillHover : "transparent"
 
         Text {
+          textFormat: Text.PlainText
           id: dueText
           anchors.centerIn: parent
           text: {

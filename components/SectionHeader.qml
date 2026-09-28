@@ -12,6 +12,7 @@ Item {
   implicitHeight: label.implicitHeight + Theme.s(2)
 
   Text {
+    textFormat: Text.PlainText
     id: label
     anchors.left: parent.left
     anchors.leftMargin: Theme.s(4)
@@ -25,6 +26,7 @@ Item {
   }
 
   Text {
+    textFormat: Text.PlainText
     anchors.right: parent.right
     anchors.rightMargin: Theme.s(4)
     anchors.baseline: label.baseline

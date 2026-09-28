@@ -36,6 +36,7 @@ Card {
       color: Theme.fillStrong
 
       Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.event && root.event.emoji ? root.event.emoji : "\u{f00f0}"
         color: Theme.secondary
@@ -53,6 +54,7 @@ Card {
       spacing: Theme.s(2)
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: root.event ? root.event.title : ""
         color: Theme.label
@@ -62,6 +64,7 @@ Card {
         elide: Text.ElideRight
       }
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: root.event ? Model.shortDate(root.event.day, true) : ""
         color: Theme.secondary
@@ -98,6 +101,7 @@ Card {
       anchors.verticalCenter: parent.verticalCenter
 
       Text {
+        textFormat: Text.PlainText
         anchors.right: parent.right
         text: !root.event ? "" : root.isToday ? "Today" : String(root.event.daysLeft)
         color: root.isToday ? Theme.fire : Theme.label
@@ -108,6 +112,7 @@ Card {
         font.features: ({ "tnum": 1 })
       }
       Text {
+        textFormat: Text.PlainText
         anchors.right: parent.right
         visible: root.event && !root.isToday
         text: root.event && root.event.daysLeft === 1 ? "DAY" : "DAYS"

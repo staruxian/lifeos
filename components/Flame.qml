@@ -89,6 +89,7 @@ Item {
 
   // Outer flame.
   Text {
+    textFormat: Text.PlainText
     id: outer
     anchors.centerIn: parent
     text: root.glyph
@@ -116,6 +117,7 @@ Item {
 
   // Hot core, a beat behind the outer layer.
   Text {
+    textFormat: Text.PlainText
     anchors.horizontalCenter: outer.horizontalCenter
     anchors.bottom: outer.bottom
     anchors.bottomMargin: root.size * 0.1

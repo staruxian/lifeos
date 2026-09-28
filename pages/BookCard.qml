@@ -32,6 +32,7 @@ Card {
       spacing: Theme.s(2)
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: root.book ? root.book.title : ""
         color: Theme.label
@@ -42,6 +43,7 @@ Card {
       }
 
       Text {
+        textFormat: Text.PlainText
         text: root.book ? root.book.read + " of " + root.book.total + " pages" : ""
         color: Theme.secondary
         font.family: Theme.font
@@ -71,6 +73,7 @@ Card {
     }
 
     Text {
+      textFormat: Text.PlainText
       id: percentText
       anchors.right: parent.right
       anchors.top: parent.top
@@ -144,6 +147,7 @@ Card {
   }
 
   Text {
+    textFormat: Text.PlainText
     width: parent.width
     text: root.book ? Model.bookEta(root.book) : ""
     color: Theme.tertiary

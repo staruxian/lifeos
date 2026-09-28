@@ -96,3 +96,10 @@ describe("milestones", () => {
     expect([2, 7, 29, 30, 99, 100].map(flameTier)).toEqual([0, 1, 1, 2, 2, 3])
   })
 })
+
+describe("notification markup", () => {
+  test("names are shown as typed, never as formatting", async () => {
+    const { escapeMarkup } = await import("../src/notify")
+    expect(escapeMarkup(`<img src="http://x/y.png"> & <b>Gym</b>`)).toBe(`&lt;img src="http://x/y.png"&gt; &amp; &lt;b&gt;Gym&lt;/b&gt;`)
+  })
+})

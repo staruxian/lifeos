@@ -37,6 +37,7 @@ Card {
       border.color: Theme.alpha(root.tint, 0.5)
 
       Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.person ? Model.initials(root.person.name) : ""
         color: root.tint
@@ -55,6 +56,7 @@ Card {
       spacing: Theme.s(2)
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: root.person ? root.person.name : ""
         color: Theme.label
@@ -64,6 +66,7 @@ Card {
         elide: Text.ElideRight
       }
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: root.person ? Model.birthdayLine(root.person) : ""
         color: Theme.secondary
@@ -100,6 +103,7 @@ Card {
       anchors.verticalCenter: parent.verticalCenter
 
       Text {
+        textFormat: Text.PlainText
         anchors.right: parent.right
         text: !root.person ? "" : root.isToday ? "🎂" : String(root.person.daysLeft)
         color: Theme.label
@@ -109,6 +113,7 @@ Card {
         font.features: ({ "tnum": 1 })
       }
       Text {
+        textFormat: Text.PlainText
         anchors.right: parent.right
         text: !root.person ? "" : root.isToday ? "TODAY" : root.person.daysLeft === 1 ? "DAY" : "DAYS"
         color: root.isToday ? Theme.fire : Theme.tertiary

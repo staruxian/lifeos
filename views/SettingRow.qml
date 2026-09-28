@@ -21,8 +21,8 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     spacing: Theme.s(2)
 
-    Text { width: parent.width; text: root.title; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.body; font.weight: Font.Medium }
-    Text { width: parent.width; visible: text !== ""; text: root.detail; color: Theme.tertiary; font.family: Theme.font; font.pixelSize: Theme.footnote; wrapMode: Text.WordWrap }
+    Text { textFormat: Text.PlainText; width: parent.width; text: root.title; color: Theme.label; font.family: Theme.font; font.pixelSize: Theme.body; font.weight: Font.Medium }
+    Text { textFormat: Text.PlainText; width: parent.width; visible: text !== ""; text: root.detail; color: Theme.tertiary; font.family: Theme.font; font.pixelSize: Theme.footnote; wrapMode: Text.WordWrap }
   }
 
   Item {

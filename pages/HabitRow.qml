@@ -25,6 +25,7 @@ Item {
       spacing: Theme.s(6)
 
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, parent.width - (flame.visible ? flame.width + parent.spacing : 0))
         text: root.habit ? root.habit.name : ""
@@ -46,6 +47,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       width: parent.width
       text: root.habit ? Model.habitDetail(root.habit) : ""
       color: Theme.tertiary

@@ -64,6 +64,7 @@ PageBase {
             HoverHandler { id: rowHover }
 
             Text {
+              textFormat: Text.PlainText
               id: tick
               anchors.left: parent.left
               anchors.leftMargin: Theme.s(12)
@@ -74,6 +75,7 @@ PageBase {
               font.pixelSize: Theme.body
             }
             Text {
+              textFormat: Text.PlainText
               anchors.left: tick.right
               anchors.leftMargin: Theme.s(14)
               anchors.right: meta.left
@@ -92,6 +94,7 @@ PageBase {
               anchors.verticalCenter: parent.verticalCenter
               spacing: Theme.s(2)
               Text {
+                textFormat: Text.PlainText
                 anchors.verticalCenter: parent.verticalCenter
                 text: modelData.total + " p · " + Model.shortDate(modelData.finishedOn, false)
                 color: Theme.tertiary

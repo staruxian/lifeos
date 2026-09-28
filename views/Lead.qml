@@ -9,6 +9,7 @@ Column {
   spacing: Theme.s(4)
 
   Text {
+    textFormat: Text.PlainText
     width: parent.width
     text: parent.title
     color: Theme.label
@@ -18,6 +19,7 @@ Column {
     wrapMode: Text.WordWrap
   }
   Text {
+    textFormat: Text.PlainText
     width: parent.width
     visible: text !== ""
     text: parent.subtitle
