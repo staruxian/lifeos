@@ -130,7 +130,8 @@ Item {
   }
 
   PanelToolTip {
-    visible: hover.hit !== null && hover.hit.state !== "future"
+    // Squares from before the habit existed have nothing to say.
+    visible: hover.hit !== null && hover.hit.state !== "future" && hover.hit.state !== "before"
     text: hover.hit ? Model.cellTooltip(root.habit, hover.hit) : ""
     fontFamily: Theme.font
     delay: 150

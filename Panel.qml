@@ -352,28 +352,39 @@ Panel {
         }
       }
 
-      // ---- the banner
+      // ---- the banner: a floating pill over the bottom of the panel
       Rectangle {
+        id: banner
+        readonly property real maxWidth: keyCatcher.width - Theme.s(24)
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        width: Math.min(parent.width, toastRow.implicitWidth + Theme.s(28))
-        height: toastRow.implicitHeight + Theme.s(16)
+        anchors.bottomMargin: Theme.s(4)
+        width: Math.min(maxWidth, toastRow.implicitWidth + Theme.s(32))
+        height: Theme.s(38)
         radius: height / 2
-        color: root.toastIsError ? Theme.alpha(Theme.danger, 0.94) : Qt.lighter(Theme.bg, 1.9)
-        border.width: root.toastIsError ? 0 : 1
-        border.color: Theme.separator
+        // Opaque, and a step lighter than the panel, so it reads as floating.
+        color: root.toastIsError ? Theme.danger : Qt.tint(Theme.bg, Theme.alpha(Theme.fg, 0.14))
+        border.width: 1
+        border.color: root.toastIsError ? "transparent" : Theme.alpha(Theme.fg, 0.12)
         opacity: root.toast !== "" ? 1 : 0
         visible: opacity > 0
+        scale: root.toast !== "" ? 1 : 0.94
         Behavior on opacity { NumberAnimation { duration: Theme.normal } }
+        Behavior on scale { NumberAnimation { duration: Theme.normal; easing.type: Easing.OutCubic } }
+
+        // Swallow clicks so they do not fall through to the card underneath.
+        MouseArea { anchors.fill: parent }
 
         Row {
           id: toastRow
           anchors.centerIn: parent
-          spacing: Theme.s(12)
+          spacing: Theme.s(14)
 
           Text {
+            id: toastLabel
+            readonly property real room: banner.maxWidth - Theme.s(32) - (undoLabel.visible ? undoLabel.implicitWidth + toastRow.spacing : 0)
             anchors.verticalCenter: parent.verticalCenter
-            width: Math.min(implicitWidth, root.width - Theme.s(140))
+            width: Math.min(implicitWidth, room)
             text: root.toast
             color: root.toastIsError ? "white" : Theme.label
             font.family: Theme.font
@@ -383,6 +394,7 @@ Panel {
           }
 
           Text {
+            id: undoLabel
             anchors.verticalCenter: parent.verticalCenter
             visible: !root.toastIsError && root.toast.indexOf("Undid") !== 0
             text: "Undo"
@@ -393,7 +405,7 @@ Panel {
 
             MouseArea {
               anchors.fill: parent
-              anchors.margins: -Theme.s(6)
+              anchors.margins: -Theme.s(8)
               cursorShape: Qt.PointingHandCursor
               onClicked: {
                 root.toast = ""
