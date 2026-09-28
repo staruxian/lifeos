@@ -50,9 +50,26 @@ export function dueNotes(state: State, now: Date): Note[] {
       })
     }
     for (const e of state.events) {
-      if (e.daysLeft === 0) notes.push({ key: `event:${e.id}:${day}`, title: `${e.emoji ? e.emoji + " " : ""}Today: ${e.title}`, body: "The day is here. Enjoy it." })
-      else if (e.daysLeft === 3) notes.push({ key: `event:${e.id}:${day}`, title: `${e.emoji ? e.emoji + " " : ""}${e.title} in 3 days`, body: "Anything to prepare?" })
+      const key = `${e.kind}:${e.id}:${day}`
+      if (e.kind === "birthday") {
+        const name = e.title.replace(/'s birthday$/, "")
+        const turns = e.turning ? ` turns ${e.turning}` : ""
+        if (e.daysLeft === 0) notes.push({ key, title: `🎂 ${name}${turns ? turns + " today" : "'s birthday is today"}`, body: "Send them a message." })
+        else if (e.daysLeft === 1) notes.push({ key, title: `🎂 ${name}${turns ? turns + " tomorrow" : "'s birthday is tomorrow"}`, body: "A gift, a call, a plan?" })
+        else if (e.daysLeft === 7) notes.push({ key, title: `🎂 ${name}'s birthday in a week`, body: "Time to think of something." })
+      } else if (e.daysLeft === 0) notes.push({ key, title: `${e.emoji ? e.emoji + " " : ""}Today: ${e.title}`, body: "The day is here. Enjoy it." })
+      else if (e.daysLeft === 3) notes.push({ key, title: `${e.emoji ? e.emoji + " " : ""}${e.title} in 3 days`, body: "Anything to prepare?" })
     }
+  }
+
+  // A habit with its own time gets its own nudge, once, if it is still open.
+  for (const h of state.habits) {
+    if (!h.remindAt || time < h.remindAt || !h.scheduledToday || h.done || h.skipped || h.kind === "avoid") continue
+    notes.push({
+      key: `habit:${h.id}:${day}`,
+      title: h.name,
+      body: h.kind === "count" ? `${h.value} of ${h.target}${h.unit ? " " + h.unit : ""} so far.` : "It's time.",
+    })
   }
 
   const left = state.day.habitsLeft

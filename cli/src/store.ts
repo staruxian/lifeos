@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite"
-import { EVERY_DAY, type Day } from "./dates"
+import { EVERY_DAY, type Birthday, type Day } from "./dates"
 
 export type HabitKind = "check" | "count" | "avoid"
 
@@ -291,4 +291,44 @@ export function bookTitle(db: Database, id: number): string {
 
 export function eventTitle(db: Database, id: number): string {
   return need(db.query("SELECT title FROM events WHERE id = ?").get(id) as { title: string } | null, `event ${id}`).title
+}
+
+// ---- people ------------------------------------------------------------------
+
+export function addPerson(db: Database, name: string, birthday: Birthday, today: Day): number {
+  const row = db
+    .query("INSERT INTO people (name, month, day, year, created_on) VALUES (?, ?, ?, ?, ?) RETURNING id")
+    .get(cleanTitle(name, "A person"), birthday.month, birthday.day, birthday.year, today) as { id: number }
+  return row.id
+}
+
+export function updatePerson(db: Database, id: number, changes: { name?: string; birthday?: Birthday }) {
+  need(db.query("SELECT id FROM people WHERE id = ?").get(id), `person ${id}`)
+  if (changes.name !== undefined) db.query("UPDATE people SET name = ? WHERE id = ?").run(cleanTitle(changes.name, "A person"), id)
+  if (changes.birthday) db.query("UPDATE people SET month = ?, day = ?, year = ? WHERE id = ?").run(changes.birthday.month, changes.birthday.day, changes.birthday.year, id)
+}
+
+export function removePerson(db: Database, id: number) {
+  const changed = db.query("DELETE FROM people WHERE id = ?").run(id)
+  if (changed.changes === 0) throw new LifeError(`person ${id} not found`)
+}
+
+export function personName(db: Database, id: number): string {
+  return need(db.query("SELECT name FROM people WHERE id = ?").get(id) as { name: string } | null, `person ${id}`).name
+}
+
+// ---- habit reminders and the evening check-in -----------------------------------
+
+export function setHabitReminder(db: Database, id: number, time: string | null) {
+  habit(db, id)
+  db.query("UPDATE habits SET remind_at = ? WHERE id = ?").run(time, id)
+}
+
+export function checkIn(db: Database, day: Day, mood: number, note: string) {
+  if (!Number.isInteger(mood) || mood < 1 || mood > 5) throw new LifeError("rate the day from 1 to 5")
+  const text = note.trim().replace(/\s+/g, " ").slice(0, 280)
+  db.query(`
+    INSERT INTO days (day, mood, note) VALUES (?, ?, ?)
+    ON CONFLICT (day) DO UPDATE SET mood = excluded.mood, note = excluded.note
+  `).run(day, mood, text === "" ? null : text)
 }

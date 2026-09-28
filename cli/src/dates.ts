@@ -169,3 +169,52 @@ export function parseWeekdays(input: string): number | null {
 export function isScheduled(mask: number, day: Day): boolean {
   return (mask & (1 << weekday(day))) !== 0
 }
+
+// ---- birthdays ------------------------------------------------------------
+
+export interface Birthday {
+  month: number // 1–12
+  day: number
+  year: number | null
+}
+
+// "12.10", "12.10.2001", "12/10/01", "2001-10-12", "oct 12", "12 october 2001".
+export function parseBirthday(input: string): Birthday | null {
+  const text = input.trim().toLowerCase().replace(/,/g, " ").replace(/\s+/g, " ")
+  let d: number, m: number, y: number | null = null
+  let match = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (match) [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  else if ((match = text.match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?$/))) {
+    d = Number(match[1])
+    m = Number(match[2])
+    if (match[3]) y = match[3].length === 2 ? (Number(match[3]) > 30 ? 1900 : 2000) + Number(match[3]) : Number(match[3])
+  } else if ((match = text.match(/^([a-z]+) (\d{1,2})(?: (\d{4}))?$/)) && monthIndex(match[1]!) >= 0) {
+    m = monthIndex(match[1]!) + 1
+    d = Number(match[2])
+    if (match[3]) y = Number(match[3])
+  } else if ((match = text.match(/^(\d{1,2}) ([a-z]+)(?: (\d{4}))?$/)) && monthIndex(match[2]!) >= 0) {
+    d = Number(match[1])
+    m = monthIndex(match[2]!) + 1
+    if (match[3]) y = Number(match[3])
+  } else return null
+
+  if (m < 1 || m > 12 || d < 1) return null
+  // Feb 29 is a real birthday; check against a leap year when none is given.
+  const check = new Date(y ?? 2000, m - 1, d)
+  if (check.getMonth() !== m - 1) return null
+  if (y !== null && (y < 1900 || toDay(new Date(y, m - 1, d)) > today())) return null
+  return { month: m, day: d, year: y }
+}
+
+// The next time the birthday comes round, today included. Feb 29 falls on
+// Feb 28 in common years.
+export function nextBirthday(b: Birthday, base: Day): Day {
+  const year = fromDay(base).getFullYear()
+  for (const y of [year, year + 1]) {
+    let date = new Date(y, b.month - 1, b.day)
+    if (date.getMonth() !== b.month - 1) date = new Date(y, b.month - 1, 28)
+    const day = toDay(date)
+    if (day >= base) return day
+  }
+  return base
+}

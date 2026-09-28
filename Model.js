@@ -75,6 +75,12 @@ function daysLabel(mask) {
 }
 
 function habitDetail(h) {
+  var base = habitDetailBase(h)
+  return h.remindAt && h.kind !== "avoid" && !h.done ? base + " · " + h.remindAt : base
+}
+
+function habitDetailBase(h) {
+  if (h.skipped) return "Skipped today"
   if (h.kind === "avoid") {
     if (h.value > 0) return "Slipped today"
     return h.streak === 1 ? "1 day clean" : h.streak + " days clean"
@@ -136,4 +142,27 @@ var EMOJI_CHOICES = ["🎉", "✈️", "🎂", "💍", "🎵", "🚀", "🏖️"
 function guessEmoji(title) {
   for (var i = 0; i < EMOJI_HINTS.length; i++) if (EMOJI_HINTS[i][0].test(title)) return EMOJI_HINTS[i][1]
   return ""
+}
+
+// Initials for a person's avatar, and a steady colour picked from the name.
+function initials(name) {
+  var parts = String(name || "").trim().split(/\s+/).filter(function(p) { return p !== "" })
+  if (parts.length === 0) return "?"
+  var first = parts[0].charAt(0)
+  var last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : ""
+  return (first + last).toUpperCase()
+}
+
+var AVATAR_COLORS = ["#ff9f0a", "#30d158", "#0a84ff", "#bf5af2", "#ff375f", "#64d2ff", "#ffd60a", "#ac8e68"]
+
+function avatarColor(name) {
+  var h = 0
+  var text = String(name || "")
+  for (var i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) % 997
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
+
+function birthdayLine(person) {
+  var date = shortDate(person.next, true)
+  return person.turning ? "Turns " + person.turning + " · " + date : date
 }

@@ -36,6 +36,14 @@ fi
 
 "$bin_dir/lifeos" state >/dev/null
 
+# With Lock Screen Explorer installed, offer the LifeOS lock design. It is
+# only copied into your designs; pick it yourself in the explorer.
+if [[ -d "$plugins_dir/io.github.sirjul1337.lock-explorer" ]]; then
+  mkdir -p "$HOME/.config/omarchy/lock-designs"
+  install -m 644 "$here/extras/LifeOS.lock.qml" "$HOME/.config/omarchy/lock-designs/LifeOS.qml"
+  echo "→ lock design added — choose it with: omarchy-shell lock explore (Custom → LifeOS)"
+fi
+
 if command -v omarchy-shell >/dev/null && omarchy-shell shell ping >/dev/null 2>&1; then
   omarchy-shell shell rescanPlugins >/dev/null
   omarchy plugin enable "$plugin_id" --section right >/dev/null 2>&1 || true

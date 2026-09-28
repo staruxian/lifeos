@@ -63,7 +63,9 @@ Card {
       }
       Text {
         width: parent.width
-        text: root.event ? Model.shortDate(root.event.day, true) : ""
+        text: !root.event ? ""
+          : root.event.kind === "birthday" && root.event.turning ? "Turns " + root.event.turning + " · " + Model.shortDate(root.event.day, true)
+          : Model.shortDate(root.event.day, true)
         color: Theme.secondary
         font.family: Theme.font
         font.pixelSize: Theme.footnote

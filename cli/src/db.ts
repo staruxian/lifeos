@@ -91,6 +91,25 @@ const migrations: string[] = [
     at  TEXT NOT NULL
   );
   `,
+  `
+  -- People and their birthdays. The year is optional: without it LifeOS
+  -- still counts down, it just cannot say how old they turn.
+  CREATE TABLE people (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT NOT NULL,
+    month      INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+    day        INTEGER NOT NULL CHECK (day BETWEEN 1 AND 31),
+    year       INTEGER,
+    created_on TEXT NOT NULL
+  );
+
+  -- A habit's own reminder time, "HH:MM", or NULL for the evening one only.
+  ALTER TABLE habits ADD COLUMN remind_at TEXT;
+
+  -- The evening check-in: how the day felt (1–5) and one line about it.
+  ALTER TABLE days ADD COLUMN mood INTEGER CHECK (mood BETWEEN 1 AND 5);
+  ALTER TABLE days ADD COLUMN note TEXT;
+  `,
 ]
 
 // Tasks, habits and reading are personal: everything LifeOS writes is

@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 import type { Database } from "bun:sqlite"
-import { addDays, parseDay, parseWeekdays, today as todayDay, weekday, type Day } from "./dates"
+import { addDays, parseBirthday, parseDay, parseWeekdays, today as todayDay, weekday, type Birthday, type Day } from "./dates"
 import { openDb, paths } from "./db"
 import { tick } from "./notify"
-import { printBooks, printEvents, printHabits, printOverview, printPlan, printSettings, printTasks, printWeek } from "./print"
+import { printBooks, printEvents, printHabits, printInsights, printOverview, printPeople, printPlan, printSettings, printTasks, printWeek } from "./print"
 import { parseQuick } from "./quick"
 import { readSettings, writeSetting } from "./settings"
 import { buildState, writeState, type State } from "./state"
@@ -92,6 +92,22 @@ function splitDue(words: string[]): { title: string; due?: string } {
     else rest.push(w)
   }
   return { title: rest.join(" "), due }
+}
+
+function birthday(value: string | undefined): Birthday {
+  const parsed = value ? parseBirthday(value) : null
+  if (!parsed) throw new LifeError(`when is the birthday? e.g. --born 12.10.2001 or --born "oct 12"`)
+  return parsed
+}
+
+// "18:00", "6pm"-less on purpose: 24-hour times, or "none" to clear.
+function reminderTime(value: string | undefined): string | null | undefined {
+  if (value === undefined) return undefined
+  const v = value.trim().toLowerCase()
+  if (v === "" || v === "none" || v === "off") return null
+  const m = v.match(/^(\d{1,2})(?::?(\d{2}))?$/)
+  if (!m || Number(m[1]) > 23 || Number(m[2] ?? 0) > 59) throw new LifeError(`reminder needs a time like 18:00`)
+  return `${m[1]!.padStart(2, "0")}:${(m[2] ?? "00").padStart(2, "0")}`
 }
 
 function quoted(text: string): string {
@@ -185,10 +201,12 @@ function run(ctx: Context, words: string[]): Printer {
           changing(ctx, `Reopened ${quoted(store.taskTitle(db, taskId()))}`)
           store.setTaskDone(db, taskId(), false, today)
           return printTasks
-        case "toggle":
-          changing(ctx, `Checked ${quoted(store.taskTitle(db, taskId()))}`)
+        case "toggle": {
+          const wasDone = (db.query("SELECT done_on FROM tasks WHERE id = ?").get(taskId()) as { done_on: string | null } | null)?.done_on
+          changing(ctx, `${wasDone ? "Reopened" : "Completed"} ${quoted(store.taskTitle(db, taskId()))}`)
           store.toggleTask(db, taskId(), today)
           return printTasks
+        }
         case "due": {
           const due = optionalDay(rest.slice(1).join(" ") || "none", today)
           changing(ctx, `Moved ${quoted(store.taskTitle(db, taskId()))}`)
@@ -259,16 +277,19 @@ function run(ctx: Context, words: string[]): Printer {
         case "":
         case "ls":
           return printHabits
-        case "add":
+        case "add": {
+          const at = reminderTime(f.get("at"))
           changing(ctx, `Added ${quoted(rest.join(" "))}`)
-          store.addHabit(db, {
+          const newId = store.addHabit(db, {
             name: rest.join(" "),
             kind: kind(f.get("kind")),
             target: f.has("target") ? int(f.get("target"), "target") : undefined,
             unit: f.get("unit"),
             days: weekdays(f.get("days")),
           }, today)
+          if (at) store.setHabitReminder(db, newId, at)
           return printHabits
+        }
         case "toggle": {
           const on = logDay(ctx)
           changing(ctx, `Logged ${quoted(store.habitName(db, habitId()))}`)
@@ -296,7 +317,8 @@ function run(ctx: Context, words: string[]): Printer {
           store.skipHabit(db, habitId(), on, start, addDays(start, 6))
           return printHabits
         }
-        case "edit":
+        case "edit": {
+          const at = reminderTime(f.get("at"))
           changing(ctx, `Edited ${quoted(store.habitName(db, habitId()))}`)
           store.updateHabit(db, habitId(), {
             name: f.get("name"),
@@ -304,7 +326,9 @@ function run(ctx: Context, words: string[]): Printer {
             unit: f.get("unit"),
             days: weekdays(f.get("days")),
           })
+          if (at !== undefined) store.setHabitReminder(db, habitId(), at)
           return printHabits
+        }
         case "up":
         case "down":
           changing(ctx, "Reordered habits")
@@ -378,6 +402,43 @@ function run(ctx: Context, words: string[]): Printer {
       break
     }
 
+    case "person":
+    case "people": {
+      const personId = () => id(rest[0], "person")
+      switch (verb) {
+        case "":
+        case "ls":
+          return printPeople
+        case "add": {
+          const born = birthday(f.get("born"))
+          changing(ctx, `Added ${quoted(rest.join(" "))}`)
+          store.addPerson(db, rest.join(" "), born, today)
+          return printPeople
+        }
+        case "edit": {
+          const born = f.has("born") ? birthday(f.get("born")) : undefined
+          changing(ctx, `Edited ${quoted(store.personName(db, personId()))}`)
+          store.updatePerson(db, personId(), { name: f.get("name"), birthday: born })
+          return printPeople
+        }
+        case "rm":
+          changing(ctx, `Deleted ${quoted(store.personName(db, personId()))}`)
+          store.removePerson(db, personId())
+          return printPeople
+      }
+      break
+    }
+
+    case "checkin": {
+      const mood = int(verb, "the day's rating (1–5)")
+      changing(ctx, "Checked in")
+      store.checkIn(db, today, mood, rest.join(" "))
+      return printOverview
+    }
+
+    case "insights":
+      return printInsights
+
     case "help":
       return () => console.log(HELP)
   }
@@ -415,6 +476,14 @@ const HELP = `lifeos — tasks, habits, books and countdowns
   lifeos event add <title> --on "nov 3" [--emoji ✈️]
   lifeos event edit <n> [--title] [--on] [--emoji]
   lifeos event rm <n>
+
+  lifeos person add <name> --born 12.10.2001    birthdays count down with the rest (year optional)
+  lifeos person edit <n> [--name] [--born]
+  lifeos person rm <n>
+
+  lifeos habit add|edit ... --at 18:00          a reminder of its own (--at none to clear)
+  lifeos checkin <1-5> [one line]               how the day felt
+  lifeos insights                               what the history says
 
   lifeos set [key value]              settings: strict, plan, morning, remind, shutdown, bedtime, notify
                                       e.g. lifeos set strict on · lifeos set shutdown 21:30

@@ -10,7 +10,9 @@ progress and countdowns, built into the Omarchy bar.
 - **Habits** — three kinds: *do it* (a check), *count it* (8 glasses of water), *avoid it* (no sugar).
   Eighteen weeks of history as green squares, and a flame once you keep one going three days in a row.
 - **Reading** — add a book and its page count, log pages each day, and see when you will finish at your pace.
-- **Countdowns** — something to look forward to, in big numbers. Gone once the day has passed.
+- **Events** — something to look forward to, in big numbers. Gone once the day has passed.
+- **People** — the people who matter and their birthdays: the age they turn, the days
+  left, and a reminder a week, a day, and on the day. Birthdays count down with events.
 
 The bar shows a ring for how much of today is done, next to the nearest countdown.
 
@@ -32,6 +34,14 @@ The bar shows a ring for how much of today is done, next to the nearest countdow
 - **Edit anything** — double-click a task to rename, click its date to move it; habits,
   books and countdowns have an edit button.
 - **Skips** — one per habit per week keeps a streak alive without pretending it was kept.
+- **Habit reminders** — give a habit its own time ("Gym at 18:00") on top of the evening nudge.
+- **Evening check-in** — at shutdown, rate the day with a face and add one line.
+- **Insights** — patterns from the last twelve weeks: your best and worst weekdays,
+  how kept days feel, reading at weekends, best runs, and a month of check-ins.
+- **Lock screen** — with [Lock Screen Explorer](https://github.com/SirJul1337/omarchy-lock-explorer),
+  `install.sh` adds a *LifeOS* design showing the time, today's priorities, habits left and
+  the next countdown. Pick it with `omarchy-shell lock explore` → Custom. (It shows your
+  priorities to anyone who sees the locked screen.)
 
 **Strict mode** (Settings) makes it firm: only today and yesterday can be logged, the
 evening shutdown opens on its own, and a habit with a streak is deleted only by typing
@@ -65,9 +75,9 @@ lifeos help
 
 | In the panel | |
 |---|---|
-| `1`–`5`, `h` / `l` | switch tabs |
+| `1`–`6`, `h` / `l` | switch tabs |
 | `n` | jump to the add field |
-| `p` · `s` · `w` · `,` | plan · shutdown · week · settings |
+| `p` · `s` · `w` · `i` · `,` | plan · shutdown · week · insights · settings |
 | `u` | undo |
 | `Esc` | back / close |
 
@@ -92,6 +102,10 @@ lifeos event add Trip --on "nov 3" --emoji ✈️
 lifeos quick "ship the release!"         # as the quick box: a priority for today
 lifeos plan · lifeos shutdown · lifeos review · lifeos undo
 lifeos set strict on
+lifeos person add Aziz --born 12.10.2001
+lifeos habit edit 2 --at 18:00           # a reminder of its own
+lifeos checkin 4 good focus day
+lifeos insights
 ```
 
 Dates understand `today`, `tomorrow`, `fri`, `next mon`, `in 3 days`, `2w`, `3.11`, `nov 3`, `2026-11-03`.

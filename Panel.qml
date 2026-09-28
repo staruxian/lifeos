@@ -26,7 +26,8 @@ Panel {
     { key: "tasks", label: "Tasks" },
     { key: "habits", label: "Habits" },
     { key: "books", label: "Reading" },
-    { key: "events", label: "Countdowns" }
+    { key: "events", label: "Events" },
+    { key: "people", label: "People" }
   ]
   property string tab: "today"
   // "" shows the tabs; otherwise "plan", "shutdown", "week" or "settings".
@@ -35,10 +36,15 @@ Panel {
     for (var i = 0; i < tabs.length; i++) if (tabs[i].key === tab) return i
     return 0
   }
-  readonly property var pages: [todayPage, tasksPage, habitsPage, booksPage, eventsPage]
-  readonly property var views: ({ plan: planView, shutdown: shutdownView, week: weekView, settings: settingsView })
+  readonly property var pages: [todayPage, tasksPage, habitsPage, booksPage, eventsPage, peoplePage]
+  readonly property var views: ({ plan: planView, shutdown: shutdownView, week: weekView, insights: insightsView, settings: settingsView })
   readonly property var page: mode !== "" ? views[mode] : pages[tabIndex]
-  readonly property var modeTitles: ({ plan: "Plan your day", shutdown: "Shut down", week: "Your week", settings: "Settings" })
+  readonly property var modeTitles: ({ plan: "Plan your day", shutdown: "Shut down", week: "Your week", insights: "Insights", settings: "Settings" })
+
+  function go(key, focusAdd) {
+    if (key.indexOf("mode:") === 0) root.openMode(key.slice(5))
+    else root.openTab(key, focusAdd)
+  }
 
   function open() {
     root.controller.show()
@@ -148,6 +154,7 @@ Panel {
         else if (t === "p") root.openMode("plan")
         else if (t === "s") root.openMode("shutdown")
         else if (t === "w") root.openMode("week")
+        else if (t === "i") root.openMode("insights")
         else if (t === "," ) root.openMode("settings")
         else if (t === "r" && root.hostWidget) root.hostWidget.refresh()
       }
@@ -337,15 +344,17 @@ Panel {
           flickDeceleration: 2600
           Behavior on height { NumberAnimation { duration: Theme.normal; easing.type: Easing.OutCubic } }
 
-          TodayPage { id: todayPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "today"; onNavigate: function(key, focusAdd) { key.indexOf("mode:") === 0 ? root.openMode(key.slice(5)) : root.openTab(key, focusAdd) } }
+          TodayPage { id: todayPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "today"; onNavigate: function(key, focusAdd) { root.go(key, focusAdd) } }
           TasksPage { id: tasksPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "tasks" }
           HabitsPage { id: habitsPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "habits" }
           BooksPage { id: booksPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "books" }
-          EventsPage { id: eventsPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "events" }
+          EventsPage { id: eventsPage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "events"; onNavigate: function(key, focusAdd) { root.go(key, focusAdd) } }
+          PeoplePage { id: peoplePage; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "" && root.tab === "people" }
 
           PlanView { id: planView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "plan"; onFinished: root.leaveMode() }
           ShutdownView { id: shutdownView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "shutdown"; onFinished: root.leaveMode() }
-          WeekView { id: weekView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "week"; onFinished: root.leaveMode() }
+          WeekView { id: weekView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "week"; onFinished: root.leaveMode(); onInsights: root.openMode("insights") }
+          InsightsView { id: insightsView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "insights"; onFinished: root.leaveMode() }
           SettingsView { id: settingsView; width: scroller.width; host: root.hostWidget; snap: root.snap; active: root.mode === "settings"; onFinished: root.leaveMode() }
 
           onContentHeightChanged: if (contentY > Math.max(0, contentHeight - height)) contentY = Math.max(0, contentHeight - height)

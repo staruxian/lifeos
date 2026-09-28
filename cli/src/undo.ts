@@ -9,7 +9,7 @@ import { LifeError } from "./store"
 // copies the tables back. Sent notifications are not part of it — undoing a
 // check-off should not send the evening reminder twice.
 
-const TABLES = ["tasks", "habits", "habit_logs", "books", "reading_logs", "events", "days", "settings"]
+const TABLES = ["tasks", "habits", "habit_logs", "books", "reading_logs", "events", "days", "settings", "people"]
 
 export interface Change {
   label: string
@@ -48,6 +48,15 @@ export function undo(db: Database, path = paths.undo): Change {
   try {
     db.query("ATTACH DATABASE ? AS saved").run(path)
     try {
+      // A copy from before an upgrade has a different shape; it cannot come back.
+      const version = (db.query("PRAGMA main.user_version").get() as { user_version: number }).user_version
+      const saved = (db.query("PRAGMA saved.user_version").get() as { user_version: number }).user_version
+      if (saved !== version) {
+        db.exec("DETACH DATABASE saved")
+        rmSync(path, { force: true })
+        rmSync(metaPath(path), { force: true })
+        throw new LifeError("nothing to undo")
+      }
       db.transaction(() => {
         for (const table of TABLES) {
           db.exec(`DELETE FROM main.${table}`)
@@ -55,7 +64,8 @@ export function undo(db: Database, path = paths.undo): Change {
         }
       })()
     } finally {
-      db.exec("DETACH DATABASE saved")
+      const attached = db.query("PRAGMA database_list").all() as { name: string }[]
+      if (attached.some((d) => d.name === "saved")) db.exec("DETACH DATABASE saved")
     }
   } finally {
     db.exec("PRAGMA foreign_keys = ON")

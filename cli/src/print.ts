@@ -193,3 +193,27 @@ export function printSettings(state: State) {
   for (const [k, v, what] of rows) console.log(`  ${k.padEnd(9)} ${bold(v.padEnd(6))} ${dim(what)}`)
   console.log(dim("\n  change with: lifeos set <key> <value>"))
 }
+
+export function printPeople(state: State) {
+  if (state.people.length === 0) return console.log(dim("No one yet. Add someone with: lifeos person add <name> --born 12.10.2001"))
+  heading("Birthdays")
+  for (const p of state.people) {
+    const when = p.daysLeft === 0 ? yellow("today! 🎂") : p.daysLeft === 1 ? "tomorrow" : `${bold(p.daysLeft)} days`
+    const age = p.turning ? dim(` · turns ${p.turning}`) : ""
+    console.log(`  ${dim(String(p.id).padStart(3))}  ${p.name}  ${dim("·")} ${when}${age}  ${dim(fromDay(p.next).toLocaleDateString("en-US", { month: "short", day: "numeric" }))}`)
+  }
+}
+
+const MOODS = ["", "😞", "😕", "😐", "🙂", "😄"]
+
+export function printInsights(state: State) {
+  const i = state.insights
+  heading("Insights")
+  if (i.lines.length === 0) console.log(dim("  Not enough history yet — keep logging for a couple of weeks."))
+  for (const line of i.lines) console.log(`  • ${line.text}`)
+  const logged = i.mood.filter((m) => m.mood !== null)
+  if (logged.length) {
+    heading("Last 30 days")
+    console.log("  " + i.mood.map((m) => (m.mood ? MOODS[m.mood] : dim("·"))).join(""))
+  }
+}

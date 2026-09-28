@@ -244,6 +244,7 @@ BarWidget {
     if (h.kind === "count") args = args.concat(["--target", String(h.target || 1)])
     if (h.unit) args = args.concat(["--unit", h.unit])
     if (h.days) args = args.concat(["--days", h.days])
+    if (h.at) args = args.concat(["--at", h.at])
     run(args.concat(["--", h.name]))
   }
   function toggleHabit(id) { run(["habit", "toggle", String(id)]) }
@@ -282,11 +283,16 @@ BarWidget {
     if (h.target) args = args.concat(["--target", String(h.target)])
     if (h.unit !== undefined) args = args.concat(["--unit", h.unit])
     if (h.days) args = args.concat(["--days", h.days])
+    args = args.concat(["--at", h.at || "none"])
     run(args)
   }
   function editBook(id, title, pages) { run(["book", "edit", String(id), "--title", title, "--pages", String(pages)]) }
   function editEvent(id, title, day, emoji) { run(["event", "edit", String(id), "--title", title, "--on", day, "--emoji", emoji || ""]) }
   function setSetting(key, value) { run(["set", key, String(value)]) }
+  function addPerson(name, born) { run(["person", "add", "--born", born, "--", name]) }
+  function editPerson(id, name, born) { run(["person", "edit", String(id), "--name", name, "--born", born]) }
+  function removePerson(id) { run(["person", "rm", String(id)]) }
+  function checkIn(mood, note) { run(["checkin", String(mood), "--", note || ""]) }
 
   // Live preview for the quick-add box, off the main queue so typing never
   // waits behind a save.

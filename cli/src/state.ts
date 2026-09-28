@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite"
 import { renameSync, writeFileSync } from "node:fs"
 import { dirname } from "node:path"
-import { addDays, diffDays, isScheduled, weekday, type Day } from "./dates"
+import { addDays, diffDays, fromDay, isScheduled, nextBirthday, weekday, type Day } from "./dates"
 import { paths, privateDir } from "./db"
 import { SKIP, type HabitKind } from "./store"
 import { clock, readSettings, shiftClock, type Settings } from "./settings"
@@ -49,6 +49,7 @@ export interface Habit {
   streak: number
   onFire: boolean
   rate30: number
+  remindAt: string | null
   skipped: boolean
   canSkip: boolean
   heat: Cell[][] // weeks (oldest first) × 7 days (Monday first)
@@ -72,11 +73,37 @@ export interface Book {
 
 export interface Event {
   id: number
+  kind: "event" | "birthday"
   title: string
   day: Day
   emoji: string
   daysLeft: number
   progress: number
+  // Birthdays: whose, and the age they turn when the year is known.
+  personId: number | null
+  turning: number | null
+}
+
+export interface Person {
+  id: number
+  name: string
+  month: number
+  day: number
+  year: number | null
+  next: Day
+  daysLeft: number
+  turning: number | null
+}
+
+export interface Insights {
+  // Plain sentences, only the ones the data supports.
+  lines: { icon: string; text: string }[]
+  // The last 30 days of check-ins, oldest first; mood null when skipped.
+  mood: { day: Day; mood: number | null; note: string | null }[]
+  // Habit promises kept by weekday over the last 12 weeks, Monday first.
+  weekdays: { rate: number; due: number }[]
+  // Longest run each habit has had.
+  records: { name: string; best: number; current: number }[]
 }
 
 // One week of keeping promises: scheduled habit days and the day's priorities.
@@ -128,7 +155,11 @@ export interface State {
     // Unfinished habits get louder as the night goes on.
     alert: "none" | "warn" | "urgent"
     habitsLeft: string[]
+    mood: number | null
+    note: string | null
   }
+  people: Person[]
+  insights: Insights
   review: { thisWeek: Week; lastWeek: Week; due: boolean }
   settings: Settings
   // Set when this snapshot follows a change that can be undone.
@@ -167,6 +198,7 @@ interface HabitRow {
   unit: string
   days: number
   created_on: Day
+  remind_at?: string | null
 }
 
 function isDone(kind: HabitKind, target: number, value: number): boolean {
@@ -227,7 +259,7 @@ function rateFor(h: HabitRow, logs: Map<Day, number>, today: Day): number {
 }
 
 function buildHabits(db: Database, today: Day): Habit[] {
-  const rows = db.query("SELECT id, name, kind, target, unit, days, created_on FROM habits ORDER BY position, id").all() as HabitRow[]
+  const rows = db.query("SELECT id, name, kind, target, unit, days, created_on, remind_at FROM habits ORDER BY position, id").all() as HabitRow[]
   const gridStart = addDays(today, -weekday(today) - (HEAT_WEEKS - 1) * 7)
   const logQuery = db.query("SELECT day, value FROM habit_logs WHERE habit_id = ?")
 
@@ -265,6 +297,7 @@ function buildHabits(db: Database, today: Day): Habit[] {
       streak,
       onFire: streak >= FIRE_STREAK,
       rate30: rateFor(h, logs, today),
+      remindAt: h.remind_at ?? null,
       skipped: raw === SKIP,
       canSkip: h.kind !== "avoid" && !skipUsed,
       heat,
@@ -333,25 +366,188 @@ function buildBooks(db: Database, today: Day): State["books"] {
 
 // Past events simply stop appearing; the rows stay, so nothing is lost if the
 // date was mistyped.
-function buildEvents(db: Database, today: Day): Event[] {
+function buildEvents(db: Database, today: Day, people: Person[]): Event[] {
   const rows = db.query("SELECT id, title, day, emoji, created_on FROM events WHERE day >= ? ORDER BY day, id").all(today) as {
     id: number; title: string; day: Day; emoji: string; created_on: Day
   }[]
-  return rows.map((e) => {
+  const events: Event[] = rows.map((e) => {
     const span = diffDays(e.created_on, e.day)
     const elapsed = diffDays(e.created_on, today)
     return {
       id: e.id,
+      kind: "event",
       title: e.title,
       day: e.day,
       emoji: e.emoji,
       daysLeft: diffDays(today, e.day),
       progress: span <= 0 ? 1 : Math.max(0, Math.min(1, elapsed / span)),
+      personId: null,
+      turning: null,
     }
   })
+  // Every birthday is a countdown too; the bar fills over the year between.
+  for (const p of people) {
+    events.push({
+      id: p.id,
+      kind: "birthday",
+      title: `${p.name}'s birthday`,
+      day: p.next,
+      emoji: "🎂",
+      daysLeft: p.daysLeft,
+      progress: Math.max(0, Math.min(1, 1 - p.daysLeft / 365)),
+      personId: p.id,
+      turning: p.turning,
+    })
+  }
+  return events.sort((a, b) => a.daysLeft - b.daysLeft || (a.kind === b.kind ? a.id - b.id : a.kind === "birthday" ? -1 : 1))
 }
 
-// ---- snapshot -------------------------------------------------------------
+function buildPeople(db: Database, today: Day): Person[] {
+  const rows = db.query("SELECT id, name, month, day, year FROM people").all() as
+    { id: number; name: string; month: number; day: number; year: number | null }[]
+  return rows
+    .map((p) => {
+      const next = nextBirthday({ month: p.month, day: p.day, year: p.year }, today)
+      return {
+        id: p.id,
+        name: p.name,
+        month: p.month,
+        day: p.day,
+        year: p.year,
+        next,
+        daysLeft: diffDays(today, next),
+        turning: p.year ? fromDay(next).getFullYear() - p.year : null,
+      }
+    })
+    .sort((a, b) => a.daysLeft - b.daysLeft || a.name.localeCompare(b.name))
+}
+
+// ---- insights -----------------------------------------------------------------
+
+const WEEKDAY_NAMES = ["Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays"]
+
+function longestRun(h: HabitRow, logs: Map<Day, number>, today: Day): number {
+  let best = 0
+  let run = 0
+  for (let day = h.created_on; day <= today; day = addDays(day, 1)) {
+    const value = logs.get(day) ?? 0
+    if (h.kind === "avoid") {
+      run = value > 0 ? 0 : run + 1
+    } else {
+      if (!isScheduled(h.days, day) || value === SKIP) continue
+      if (isDone(h.kind, h.target, value)) run++
+      else if (day !== today) run = 0
+    }
+    best = Math.max(best, run)
+  }
+  return best
+}
+
+export function buildInsights(db: Database, today: Day, habits: Habit[]): Insights {
+  const lines: Insights["lines"] = []
+  const since = addDays(today, -83) // twelve weeks
+  const rows = db.query("SELECT id, name, kind, target, unit, days, created_on FROM habits").all() as HabitRow[]
+  const logQuery = db.query("SELECT day, value FROM habit_logs WHERE habit_id = ?")
+
+  // Promises by weekday, and by day for comparing with mood.
+  const weekdays = Array.from({ length: 7 }, () => ({ due: 0, kept: 0 }))
+  const perDay = new Map<Day, { due: number; kept: number }>()
+  const records: Insights["records"] = []
+  let recent = { due: 0, kept: 0 }
+  let before = { due: 0, kept: 0 }
+
+  for (const h of rows) {
+    const logs = new Map<Day, number>()
+    for (const l of logQuery.all(h.id) as { day: Day; value: number }[]) logs.set(l.day, l.value)
+    const current = habits.find((x) => x.id === h.id)?.streak ?? 0
+    records.push({ name: h.name, best: Math.max(longestRun(h, logs, today), current), current })
+
+    for (let day = since > h.created_on ? since : h.created_on; day < today; day = addDays(day, 1)) {
+      if (h.kind !== "avoid" && !isScheduled(h.days, day)) continue
+      const value = logs.get(day) ?? 0
+      if (value === SKIP) continue
+      const done = isDone(h.kind, h.target, value)
+      const w = weekdays[weekday(day)]!
+      w.due++
+      if (done) w.kept++
+      const d = perDay.get(day) ?? { due: 0, kept: 0 }
+      d.due++
+      if (done) d.kept++
+      perDay.set(day, d)
+      const bucket = day >= addDays(today, -30) ? recent : day >= addDays(today, -60) ? before : null
+      if (bucket) {
+        bucket.due++
+        if (done) bucket.kept++
+      }
+    }
+  }
+
+  const rated = weekdays.map((w, i) => ({ i, rate: w.due ? w.kept / w.due : 0, due: w.due })).filter((w) => w.due >= 3)
+  if (rated.length >= 4) {
+    const sorted = [...rated].sort((a, b) => b.rate - a.rate)
+    const top = sorted[0]!
+    const low = sorted[sorted.length - 1]!
+    if (top.rate - low.rate >= 0.15)
+      lines.push({ icon: "calendar", text: `You keep habits best on ${WEEKDAY_NAMES[top.i]} (${Math.round(top.rate * 100)}%) and slip most on ${WEEKDAY_NAMES[low.i]} (${Math.round(low.rate * 100)}%).` })
+  }
+
+  if (recent.due >= 10 && before.due >= 10) {
+    const delta = Math.round((recent.kept / recent.due - before.kept / before.due) * 100)
+    if (Math.abs(delta) >= 5)
+      lines.push({ icon: delta > 0 ? "up" : "down", text: `Habits kept are ${delta > 0 ? "up" : "down"} ${Math.abs(delta)}% on the month before.` })
+  }
+
+  // Reading: weekdays against weekends.
+  const reading = db.query("SELECT day, SUM(pages) AS pages FROM reading_logs WHERE day >= ? GROUP BY day").all(since) as { day: Day; pages: number }[]
+  if (reading.length >= 8) {
+    let wk = 0, wkDays = 0, we = 0, weDays = 0
+    for (const r of reading) {
+      if (weekday(r.day) >= 5) { we += r.pages; weDays++ } else { wk += r.pages; wkDays++ }
+    }
+    if (wkDays >= 3 && weDays >= 2) {
+      const a = wk / wkDays, b = we / weDays
+      const ratio = Math.max(a, b) / Math.max(1, Math.min(a, b))
+      if (ratio >= 1.3)
+        lines.push({ icon: "book", text: `On reading days you read ${b > a ? "more at weekends" : "more on weekdays"}: ${Math.round(b > a ? b : a)} pages against ${Math.round(b > a ? a : b)}.` })
+    }
+  }
+
+  // Mood: how kept days feel against the rest.
+  const checkins = db.query("SELECT day, mood, note FROM days WHERE day >= ? AND mood IS NOT NULL").all(addDays(today, -89)) as { day: Day; mood: number; note: string | null }[]
+  const kept: number[] = [], missed: number[] = []
+  for (const c of checkins) {
+    const d = perDay.get(c.day)
+    if (!d || d.due === 0) continue
+    ;(d.kept === d.due ? kept : missed).push(c.mood)
+  }
+  const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+  if (kept.length >= 3 && missed.length >= 3 && Math.abs(avg(kept) - avg(missed)) >= 0.3)
+    lines.push({ icon: "mood", text: `Days you keep every habit feel ${avg(kept) > avg(missed) ? "better" : "harder"}: ${avg(kept).toFixed(1)} against ${avg(missed).toFixed(1)} out of 5.` })
+
+  const record = [...records].sort((a, b) => b.best - a.best)[0]
+  if (record && record.best >= 3)
+    lines.push({ icon: "fire", text: record.current >= record.best
+      ? `${record.name} is on its best run ever: ${record.best} days.`
+      : `Your longest run: ${record.name}, ${record.best} days (now ${record.current}).` })
+
+  const tasks = (db.query("SELECT COUNT(*) AS n FROM tasks WHERE done_on >= ?").get(addDays(today, -27)) as { n: number }).n
+  if (tasks >= 4) lines.push({ icon: "check", text: `You finish about ${Math.round(tasks / 4)} tasks a week.` })
+
+  const moodByDay = new Map(checkins.map((c) => [c.day, c]))
+  const mood: Insights["mood"] = []
+  for (let i = 29; i >= 0; i--) {
+    const day = addDays(today, -i)
+    const c = moodByDay.get(day)
+    mood.push({ day, mood: c?.mood ?? null, note: c?.note ?? null })
+  }
+
+  return {
+    lines,
+    mood,
+    weekdays: weekdays.map((w) => ({ rate: w.due ? w.kept / w.due : 0, due: w.due })),
+    records: records.filter((r) => r.best > 0).sort((a, b) => b.best - a.best),
+  }
+}
 
 // ---- the week ---------------------------------------------------------------
 
@@ -443,13 +639,14 @@ export function buildState(db: Database, today: Day, now = new Date()): State {
   const tasks = buildTasks(db, today)
   const habits = buildHabits(db, today)
   const books = buildBooks(db, today)
-  const events = buildEvents(db, today)
+  const people = buildPeople(db, today)
+  const events = buildEvents(db, today, people)
   const due = habits.filter((h) => h.scheduledToday && !h.skipped)
   const current = books.reading[0]
   const time = clock(now)
 
-  const dayRow = db.query("SELECT planned_at, shutdown_at FROM days WHERE day = ?").get(today) as
-    { planned_at: string | null; shutdown_at: string | null } | null
+  const dayRow = db.query("SELECT planned_at, shutdown_at, mood, note FROM days WHERE day = ?").get(today) as
+    { planned_at: string | null; shutdown_at: string | null; mood: number | null; note: string | null } | null
   const planned = !!dayRow?.planned_at
   const shutdown = !!dayRow?.shutdown_at
   const phase = phaseFor(time, settings)
@@ -505,7 +702,11 @@ export function buildState(db: Database, today: Day, now = new Date()): State {
       leftovers,
       alert,
       habitsLeft,
+      mood: dayRow?.mood ?? null,
+      note: dayRow?.note ?? null,
     },
+    people,
+    insights: buildInsights(db, today, habits),
     review: {
       thisWeek,
       lastWeek,

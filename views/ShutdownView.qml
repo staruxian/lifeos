@@ -130,12 +130,78 @@ ViewBase {
     }
   }
 
+  // ---- check-in: how it felt, in a tap and a line
+  property int mood: 0
+  readonly property int shownMood: mood > 0 ? mood : (day && day.mood ? day.mood : 0)
+  readonly property var faces: ["😞", "😕", "😐", "🙂", "😄"]
+  readonly property var words: ["Rough", "Meh", "Okay", "Good", "Great"]
+  onActiveChanged: if (active) { mood = 0; noteField.text = day && day.note ? day.note : "" }
+
+  function saveCheckIn() {
+    if (root.shownMood > 0) root.host.checkIn(root.shownMood, noteField.text.trim())
+  }
+
+  Column {
+    width: parent.width
+    spacing: Theme.s(8)
+
+    SectionHeader { text: "How did today feel?"; trailing: root.shownMood ? root.words[root.shownMood - 1] : "" }
+
+    Row {
+      spacing: Theme.s(8)
+      anchors.horizontalCenter: parent.horizontalCenter
+
+      Repeater {
+        model: 5
+        Rectangle {
+          required property int index
+          readonly property bool picked: root.shownMood === index + 1
+          width: Theme.s(56)
+          height: Theme.s(56)
+          radius: Theme.radius
+          color: picked ? Theme.fillStrong : faceMouse.containsMouse ? Theme.fillHover : Theme.fill
+          border.width: picked ? 1 : 0
+          border.color: Theme.alpha(Theme.fg, 0.2)
+          scale: faceMouse.pressed ? 0.92 : picked ? 1.06 : 1
+          Behavior on scale { NumberAnimation { duration: Theme.fast; easing.type: Easing.OutBack } }
+
+          Text {
+            anchors.centerIn: parent
+            text: root.faces[index]
+            font.family: Theme.emojiFont
+            font.pixelSize: Theme.s(26)
+            opacity: parent.picked || root.shownMood === 0 ? 1 : 0.45
+          }
+          MouseArea { id: faceMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mood = index + 1 }
+        }
+      }
+    }
+
+    Field {
+      id: noteField
+      width: parent.width
+      icon: "\u{f03eb}"
+      placeholder: "One line about today (optional)"
+      clearOnSubmit: false
+      maxLength: 280
+      onSubmitted: if (root.day && root.day.shutdown) root.saveCheckIn()
+    }
+  }
+
   PillButton {
     anchors.right: parent.right
     visible: !(root.day && root.day.shutdown)
     text: "Finish the day"
     icon: "\u{f0594}"
     active: root.leftovers.length === 0
-    onClicked: { root.host.shutdownDay(); root.finished() }
+    onClicked: { root.saveCheckIn(); root.host.shutdownDay(); root.finished() }
+  }
+
+  PillButton {
+    anchors.right: parent.right
+    visible: root.day !== null && root.day.shutdown && root.shownMood > 0
+    text: "Save check-in"
+    primary: false
+    onClicked: { root.saveCheckIn(); root.finished() }
   }
 }

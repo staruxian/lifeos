@@ -160,7 +160,7 @@ PageBase {
     event: root.nextEvent
     host: root.host
     removable: false
-    onActivated: root.navigate("events", false)
+    onActivated: root.navigate(root.nextEvent && root.nextEvent.kind === "birthday" ? "people" : "events", false)
   }
 
   // ---- habits due today

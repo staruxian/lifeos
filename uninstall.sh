@@ -8,6 +8,7 @@ link="$HOME/.config/omarchy/plugins/$plugin_id"
 
 omarchy plugin disable "$plugin_id" >/dev/null 2>&1 || true
 [[ -L "$link" ]] && rm "$link" && echo "→ removed plugin link"
+[[ -f "$HOME/.config/omarchy/lock-designs/LifeOS.qml" ]] && rm "$HOME/.config/omarchy/lock-designs/LifeOS.qml" && echo "→ removed the LifeOS lock design"
 [[ -f "$HOME/.local/bin/lifeos" ]] && rm "$HOME/.local/bin/lifeos" && echo "→ removed ~/.local/bin/lifeos"
 
 if [[ "${1:-}" == "--purge" ]]; then

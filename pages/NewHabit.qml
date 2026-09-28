@@ -34,6 +34,7 @@ Card {
     nameField.clear()
     targetField.text = ""
     unitField.clear()
+    atField.clear()
     kind = "check"
     days = 127
     expanded = habit !== null
@@ -47,6 +48,7 @@ Card {
     nameField.text = habit.name
     targetField.text = habit.kind === "count" ? String(habit.target) : ""
     unitField.text = habit.unit
+    atField.text = habit.remindAt || ""
     Qt.callLater(nameField.focusInput)
   }
   onHabitChanged: load()
@@ -66,7 +68,8 @@ Card {
         name: nameField.text.trim(),
         target: kind === "count" ? Number(targetField.text) || 1 : 0,
         unit: unitField.text.trim(),
-        days: kind === "avoid" ? "" : daysArg()
+        days: kind === "avoid" ? "" : daysArg(),
+        at: kind === "avoid" ? "" : atField.text.trim()
       })
       closed()
       return
@@ -76,7 +79,8 @@ Card {
       kind: kind,
       target: Number(targetField.text) || 1,
       unit: unitField.text.trim(),
-      days: kind === "avoid" || days === 127 ? "" : daysArg()
+      days: kind === "avoid" || days === 127 ? "" : daysArg(),
+      at: kind === "avoid" ? "" : atField.text.trim()
     })
     reset()
   }
@@ -204,6 +208,18 @@ Card {
         }
       }
     }
+  }
+
+  // Its own reminder, on top of the evening one.
+  Field {
+    id: atField
+    visible: root.expanded && root.kind !== "avoid"
+    width: parent.width
+    icon: "\u{f009a}"
+    placeholder: "Remind me at — 18:00 (optional)"
+    clearOnSubmit: false
+    onSubmitted: root.submit()
+    onEscaped: root.reset()
   }
 
   Row {
