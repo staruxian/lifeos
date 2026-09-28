@@ -148,6 +148,7 @@ The CLI owns the data and computes every number the panel shows; the QML only
 lays it out. `cd cli && bun test` runs the tests. `./install.sh` from a checkout
 links it into the shell. The shell caches plugin QML, so run
 `omarchy restart shell` after edits. `bun run typecheck` checks the TypeScript.
+Architecture, rules and known QML pitfalls are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 ## License
 

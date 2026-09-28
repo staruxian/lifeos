@@ -1,4 +1,4 @@
-# LifeOS
+# Developing LifeOS
 
 An Omarchy shell plugin (`staruxian.lifeos`) for tasks, habits, reading, countdowns
 and people's birthdays, with a morning plan / evening shutdown rhythm. Published at
