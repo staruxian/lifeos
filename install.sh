@@ -72,7 +72,10 @@ fi
 link="$plugins_dir/$plugin_id"
 if [[ "$here" != "$link" ]]; then
   if [[ -L "$link" && "$(readlink "$link")" == "$here" ]]; then
-    record link "$link" "$here"
+    # Already in place. Only a link this installer made (and recorded) stays
+    # ours; one you made yourself is used as-is and never recorded, so
+    # uninstall.sh will not remove it.
+    [[ "$(recorded link "$link")" == "$here" ]] || echo "  $link already points here (not created by install.sh) — using it, not tracking it" >&2
   elif [[ -e "$link" || -L "$link" ]]; then
     echo "  $link already exists and is not this checkout — left alone" >&2
   else
