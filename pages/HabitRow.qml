@@ -40,7 +40,8 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         visible: root.habit ? root.habit.onFire : false
         streak: root.habit ? root.habit.streak : 0
-        size: Theme.s(14)
+        baseSize: Theme.s(14)
+        tier: root.habit ? root.habit.flame : 0
       }
     }
 

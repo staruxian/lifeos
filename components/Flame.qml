@@ -9,9 +9,14 @@ import qs.Ui
 Item {
   id: root
 
-  property int size: Theme.s(18)
+  property int baseSize: Theme.s(18)
   property int streak: 0
+  // 0 under a week, 1 a week, 2 a month, 3 a hundred days: bigger, busier, hotter.
+  property int tier: 0
   property bool running: visible
+  readonly property int size: Math.round(baseSize * [1, 1.18, 1.35, 1.55][Math.max(0, Math.min(3, tier))])
+  readonly property color outerColor: tier >= 3 ? "#ff375f" : Theme.fire
+  readonly property color coreColor: tier >= 2 ? "#fff3c4" : Theme.fireCore
 
   implicitWidth: size
   implicitHeight: size
@@ -34,9 +39,9 @@ Item {
         centerX: glow.width / 2; centerY: glow.height / 2
         centerRadius: glow.width / 2
         focalX: centerX; focalY: centerY
-        GradientStop { position: 0.0; color: Theme.alpha(Theme.fire, 0.55) }
-        GradientStop { position: 0.45; color: Theme.alpha(Theme.fire, 0.16) }
-        GradientStop { position: 1.0; color: Theme.alpha(Theme.fire, 0) }
+        GradientStop { position: 0.0; color: Theme.alpha(root.outerColor, 0.55 + root.tier * 0.1) }
+        GradientStop { position: 0.45; color: Theme.alpha(root.outerColor, 0.16 + root.tier * 0.05) }
+        GradientStop { position: 1.0; color: Theme.alpha(root.outerColor, 0) }
       }
       PathAngleArc {
         centerX: glow.width / 2; centerY: glow.height / 2
@@ -65,7 +70,7 @@ Item {
     y: root.size * 0.35
     width: root.size * 0.4
     height: 1
-    emitRate: 5
+    emitRate: 5 + root.tier * 5
     lifeSpan: 700
     lifeSpanVariation: 250
     velocity: PointDirection { y: -root.size * 1.4; yVariation: root.size * 0.5; xVariation: root.size * 0.35 }
@@ -78,7 +83,7 @@ Item {
       width: Math.max(1.5, root.size * 0.1)
       height: width
       radius: width / 2
-      color: Math.random() > 0.5 ? Theme.fire : Theme.fireCore
+      color: Math.random() > 0.5 ? root.outerColor : root.coreColor
     }
   }
 
@@ -87,7 +92,7 @@ Item {
     id: outer
     anchors.centerIn: parent
     text: root.glyph
-    color: Theme.fire
+    color: root.outerColor
     font.family: Theme.iconFont
     font.pixelSize: root.size
     transformOrigin: Item.Bottom
@@ -115,7 +120,7 @@ Item {
     anchors.bottom: outer.bottom
     anchors.bottomMargin: root.size * 0.1
     text: root.glyph
-    color: Theme.fireCore
+    color: root.coreColor
     font.family: Theme.iconFont
     font.pixelSize: root.size * 0.52
     transformOrigin: Item.Bottom
@@ -134,7 +139,7 @@ Item {
 
   PanelToolTip {
     visible: hover.hovered && root.streak > 0
-    text: root.streak + " days in a row"
+    text: root.tier >= 3 ? "Legendary run" : root.tier === 2 ? "A month strong" : root.tier === 1 ? "A week strong" : "On a streak"
     fontFamily: Theme.font
   }
 }

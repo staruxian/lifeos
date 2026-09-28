@@ -36,6 +36,13 @@ The bar shows a ring for how much of today is done, next to the nearest countdow
   books and countdowns have an edit button.
 - **Skips** — one per habit per week keeps a streak alive without pretending it was kept.
 - **Habit reminders** — give a habit its own time ("Gym at 18:00") on top of the evening nudge.
+- **A voice with attitude** — pick the notifications' tone: *Gentle* ("Time for Gym."),
+  *Coach* ("Ten minutes in and you'll be glad you went.") or *Savage* ("Get your freaking
+  ass up and go touch some grass. Gym won't do itself."). Lines fit the habit — workouts,
+  reading, water, study, mindfulness — change daily, and Savage keeps asking every 45
+  minutes until it's done.
+- **Milestones** — 7, 14, 30, 50, 100, 200 and 365 days get confetti and a notification,
+  and the flame grows bigger and hotter at a week, a month and a hundred days.
 - **Evening check-in** — at shutdown, rate the day with a face and add one line.
 - **Insights** — patterns from the last twelve weeks: your best and worst weekdays,
   how kept days feel, reading at weekends, best runs, and a month of check-ins.
@@ -90,7 +97,7 @@ o.bind("SUPER + ALT + A", "LifeOS quick add", "omarchy-shell staruxian.lifeos qu
 ```
 
 Settings live in the panel (gear icon) or `lifeos set`: `strict`, `plan`, `morning`,
-`remind`, `shutdown`, `bedtime`, `notify`.
+`remind`, `shutdown`, `bedtime`, `notify`, `tone`.
 
 From a terminal (with `install.sh`), everything updates the bar live:
 

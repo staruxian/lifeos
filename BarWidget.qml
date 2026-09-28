@@ -31,6 +31,9 @@ BarWidget {
   property int changeSerial: 0
   // Bumped when the day becomes complete while LifeOS is running.
   property int celebrateSerial: 0
+  // A streak just reached a milestone: what to say, announced once.
+  property string milestoneText: ""
+  property int milestoneSerial: 0
   readonly property var summary: state ? state.summary : null
   readonly property real progress: Model.dayProgress(summary)
   readonly property string alert: state && state.day ? state.day.alert : "none"
@@ -152,7 +155,16 @@ BarWidget {
         if (!root.state || parsed.generatedAt >= root.state.generatedAt) {
           var wasComplete = root.state ? root.state.summary.dayComplete : null
           var sameDay = root.state ? root.state.today === parsed.today : false
+          var before = ({})
+          if (root.state && sameDay) for (var i = 0; i < root.state.habits.length; i++) before[root.state.habits[i].id] = root.state.habits[i].milestone
           root.state = parsed
+          if (sameDay) for (var j = 0; j < parsed.habits.length; j++) {
+            var h = parsed.habits[j]
+            if (h.milestone && !before[h.id]) {
+              root.milestoneText = "🔥 " + h.milestone + " days of " + h.name
+              root.milestoneSerial++
+            }
+          }
           if (sameDay && wasComplete === false && parsed.summary.dayComplete) root.celebrateSerial++
           root.afterState()
         }
@@ -450,6 +462,7 @@ BarWidget {
         Connections {
           target: root
           function onCelebrateSerialChanged() { celebrate.restart() }
+          function onMilestoneSerialChanged() { celebrate.restart() }
         }
       }
 

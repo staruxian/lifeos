@@ -189,6 +189,7 @@ export function printSettings(state: State) {
     ["shutdown", s.shutdown, "decide on unfinished tasks"],
     ["bedtime", s.bedtime, "last call an hour before"],
     ["notify", s.notify, "desktop notifications"],
+    ["tone", s.tone, "gentle · coach · savage (savage nags until it's done)"],
   ]
   for (const [k, v, what] of rows) console.log(`  ${k.padEnd(9)} ${bold(v.padEnd(6))} ${dim(what)}`)
   console.log(dim("\n  change with: lifeos set <key> <value>"))

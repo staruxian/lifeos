@@ -14,6 +14,8 @@ export const DEFAULTS = {
   shutdown: "21:00",
   bedtime: "23:00",
   notify: "on",
+  // How notifications talk: gentle, coach, or savage (and savage nags).
+  tone: "coach",
 }
 
 export type Settings = typeof DEFAULTS
@@ -51,8 +53,12 @@ function normalizeSwitch(value: string): string | null {
 
 export function writeSetting(db: Database, key: string, value: string) {
   if (!isSettingKey(key)) throw new LifeError(`unknown setting "${key}" — one of ${Object.keys(DEFAULTS).join(", ")}`)
-  const normalized = TIME_KEYS.includes(key) ? normalizeTime(value) : SWITCH_KEYS.includes(key) ? normalizeSwitch(value) : value
-  if (normalized === null) throw new LifeError(TIME_KEYS.includes(key) ? `${key} needs a time like 21:00` : `${key} is on or off`)
+  const normalized = TIME_KEYS.includes(key) ? normalizeTime(value)
+    : SWITCH_KEYS.includes(key) ? normalizeSwitch(value)
+    : key === "tone" ? (["gentle", "coach", "savage"].includes(value.trim().toLowerCase()) ? value.trim().toLowerCase() : null)
+    : value
+  if (normalized === null)
+    throw new LifeError(TIME_KEYS.includes(key) ? `${key} needs a time like 21:00` : key === "tone" ? "tone is gentle, coach or savage" : `${key} is on or off`)
   db.query("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value").run(key, normalized)
 }
 

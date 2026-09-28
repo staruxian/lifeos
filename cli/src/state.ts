@@ -12,6 +12,13 @@ import type { Change } from "./undo"
 
 export const HEAT_WEEKS = 18
 export const FIRE_STREAK = 3
+// Streaks worth a celebration.
+export const MILESTONES = [7, 14, 30, 50, 100, 200, 365]
+
+// The flame grows with the streak: 0 below a week, then 1, 2, 3.
+export function flameTier(streak: number): number {
+  return streak >= 100 ? 3 : streak >= 30 ? 2 : streak >= 7 ? 1 : 0
+}
 const PACE_WINDOW = 14
 
 export interface Task {
@@ -48,6 +55,9 @@ export interface Habit {
   progress: number
   streak: number
   onFire: boolean
+  flame: number
+  // Set on the day a streak reaches one of MILESTONES (and today counts).
+  milestone: number | null
   rate30: number
   remindAt: string | null
   skipped: boolean
@@ -294,6 +304,8 @@ function buildHabits(db: Database, today: Day): Habit[] {
       progress: h.kind === "count" ? Math.min(1, value / h.target) : isDone(h.kind, h.target, raw) ? 1 : 0,
       streak,
       onFire: streak >= FIRE_STREAK,
+      flame: flameTier(streak),
+      milestone: MILESTONES.includes(streak) && isDone(h.kind, h.target, raw) ? streak : null,
       rate30: rateFor(h, logs, today),
       remindAt: h.remind_at ?? null,
       skipped: raw === SKIP,

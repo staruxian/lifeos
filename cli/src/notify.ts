@@ -1,5 +1,6 @@
 import type { Database } from "bun:sqlite"
 import { clock, shiftClock } from "./settings"
+import { habitLine, line, tone } from "./voice"
 import type { State } from "./state"
 
 // `lifeos tick` runs every minute from the bar. It works out which reminders
@@ -31,22 +32,35 @@ function list(names: string[]): string {
   return `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`
 }
 
+const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5))
+
+// Savage mode does not ask once: it asks again every so often until the
+// thing is done, a few times at most. Returns which round we are in.
+function nagRound(time: string, from: string, every: number, max: number): number {
+  const round = Math.floor((minutes(time) - minutes(from)) / every)
+  return Math.max(0, Math.min(max, round))
+}
+
 // Everything that should have been said by now, most important last so a
 // late start does not bury the loud one.
 export function dueNotes(state: State, now: Date): Note[] {
   const s = state.settings
   const day = state.today
   const time = clock(now)
+  const t = tone(s.tone)
+  const nag = t === "savage"
   const notes: Note[] = []
   if (s.notify !== "on" || time < "04:00") return notes
+  const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`
 
   if (time >= s.morning) {
     if (!state.day.planned && s.plan === "on") {
       const n = state.summary.tasksLeft
+      const key = `plan:${day}`
       notes.push({
-        key: `plan:${day}`,
-        title: `${state.day.greeting} — plan your day`,
-        body: n > 0 ? `${n} task${n === 1 ? "" : "s"} due. Pick up to three that matter most.` : "Pick up to three things that matter most today.",
+        key,
+        title: line(t, "planTitle", key, { greeting: state.day.greeting }),
+        body: n > 0 ? line(t, "planBody", key, { n: plural(n, "task") }) : line(t, "planBody", key + "none", { n: "Nothing" }),
       })
     }
     for (const e of state.events) {
@@ -63,27 +77,44 @@ export function dueNotes(state: State, now: Date): Note[] {
     }
   }
 
-  // A habit with its own time gets its own nudge, once, if it is still open.
+  // A streak reaching a milestone, the moment it happens.
+  for (const h of state.habits) {
+    if (!h.milestone) continue
+    const key = `milestone:${h.id}:${h.milestone}:${day}`
+    notes.push({ key, title: line(t, "milestoneTitle", key, { n: h.milestone, name: h.name }), body: line(t, "milestoneBody", key, {}) })
+  }
+
+  // A habit with its own time gets its own nudge while it is still open —
+  // once, or in savage mode every 45 minutes, up to five times.
   for (const h of state.habits) {
     if (!h.remindAt || time < h.remindAt || !h.scheduledToday || h.done || h.skipped || h.kind === "avoid") continue
-    notes.push({
-      key: `habit:${h.id}:${day}`,
-      title: h.name,
-      body: h.kind === "count" ? `${h.value} of ${h.target}${h.unit ? " " + h.unit : ""} so far.` : "It's time.",
-    })
+    const round = nag ? nagRound(time, h.remindAt, 45, 4) : 0
+    const key = `habit:${h.id}:${day}` + (round ? `:${round}` : "")
+    const progress = h.kind === "count" ? ` (${h.value}/${h.target}${h.unit ? " " + h.unit : ""})` : ""
+    notes.push({ key, title: h.name + progress, body: habitLine(t, key, h.name), urgent: nag && round >= 2 })
   }
 
   const left = state.day.habitsLeft
-  if (time >= s.remind && left.length > 0 && time < shiftClock(s.bedtime, -60))
-    notes.push({ key: `remind:${day}`, title: `${left.length} habit${left.length === 1 ? "" : "s"} left today`, body: `${list(left)} — there's still time.` })
+  const lastCall = shiftClock(s.bedtime, -60)
+  if (time >= s.remind && left.length > 0 && time < lastCall) {
+    const round = nag ? nagRound(time, s.remind, 60, 3) : 0
+    const key = `remind:${day}` + (round ? `:${round}` : "")
+    // One habit left gets its own kind of line; several get the list.
+    notes.push(left.length === 1
+      ? { key, title: line(t, "remindTitle", key, { n: "1 habit" }), body: habitLine(t, key, left[0]!) }
+      : { key, title: line(t, "remindTitle", key, { n: plural(left.length, "habit") }), body: line(t, "remindBody", key, { list: list(left) }) })
+  }
 
   if (time >= s.shutdown && state.day.needsShutdown) {
     const n = state.day.leftovers.length
-    notes.push({ key: `shutdown:${day}`, title: "Time to shut down", body: `${n} unfinished task${n === 1 ? "" : "s"} need${n === 1 ? "s" : ""} a decision: tomorrow, another day, or drop.` })
+    const key = `shutdown:${day}`
+    notes.push({ key, title: line(t, "shutdownTitle", key, {}), body: line(t, "shutdownBody", key, { n: plural(n, "unfinished task") }) })
   }
 
-  if (time >= shiftClock(s.bedtime, -60) && left.length > 0)
-    notes.push({ key: `bedtime:${day}`, title: "Don't break the chain", body: `${list(left)} still open. An hour to go.`, urgent: true })
+  if (time >= lastCall && left.length > 0) {
+    const key = `bedtime:${day}`
+    notes.push({ key, title: line(t, "bedtimeTitle", key, {}), body: line(t, "bedtimeBody", key, { list: list(left), time }), urgent: true })
+  }
 
   return notes
 }

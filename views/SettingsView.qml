@@ -66,6 +66,47 @@ ViewBase {
       padding: Theme.s(3)
       spacing: 0
 
+      // How the notifications talk.
+      Column {
+        width: parent.width
+        topPadding: Theme.s(12)
+        bottomPadding: Theme.s(12)
+        spacing: Theme.s(8)
+
+        Text {
+          x: Theme.s(12)
+          text: "Tone"
+          color: Theme.label
+          font.family: Theme.font
+          font.pixelSize: Theme.body
+          font.weight: Font.Medium
+        }
+        SegmentedControl {
+          x: Theme.s(12)
+          width: parent.width - Theme.s(24)
+          compact: true
+          model: [{ key: "gentle", label: "Gentle" }, { key: "coach", label: "Coach" }, { key: "savage", label: "Savage 🔥" }]
+          current: root.st ? root.st.tone : "coach"
+          onPicked: function(key) { root.host.setSetting("tone", key) }
+        }
+        Text {
+          x: Theme.s(12)
+          width: parent.width - Theme.s(24)
+          text: {
+            var t = root.st ? root.st.tone : "coach"
+            if (t === "savage") return "“Get your freaking ass up and go touch some grass. Gym won't do itself.” — and it keeps asking every 45 minutes until you do."
+            if (t === "gentle") return "“Time for Gym.” Calm and short."
+            return "“Ten minutes in and you'll be glad you went. Gym, let's go.”"
+          }
+          color: Theme.tertiary
+          font.family: Theme.font
+          font.pixelSize: Theme.footnote
+          font.italic: true
+          wrapMode: Text.WordWrap
+        }
+      }
+      Hairline { inset: Theme.s(12) }
+
       SettingRow {
         title: "Notifications"
         detail: "Plan, habits left, shutdown, and countdowns."

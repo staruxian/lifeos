@@ -62,7 +62,8 @@ Card {
           anchors.verticalCenterOffset: -Theme.s(1)
           visible: root.habit ? root.habit.onFire : false
           streak: root.habit ? root.habit.streak : 0
-          size: Theme.s(16)
+          baseSize: Theme.s(16)
+          tier: root.habit ? root.habit.flame : 0
         }
       }
 

@@ -103,23 +103,36 @@ Panel {
 
   property string toast: ""
   property bool toastIsError: false
+  property bool toastIsMilestone: false
   Connections {
     target: root.hostWidget
     function onErrorSerialChanged() {
       root.toast = root.hostWidget.lastError
       root.toastIsError = true
+      root.toastIsMilestone = false
       toastTimer.interval = 3600
       toastTimer.restart()
     }
     function onChangeSerialChanged() {
-      if (!root.opened) return
+      // A milestone just took the banner; let it have its moment.
+      if (!root.opened || (root.toastIsMilestone && toastTimer.running)) return
       root.toast = root.hostWidget.lastChange
       root.toastIsError = false
+      root.toastIsMilestone = false
       toastTimer.interval = 5500
       toastTimer.restart()
     }
     function onCelebrateSerialChanged() {
       if (root.opened) confetti.burst()
+    }
+    function onMilestoneSerialChanged() {
+      if (!root.opened) return
+      confetti.burst()
+      root.toast = root.hostWidget.milestoneText
+      root.toastIsError = false
+      root.toastIsMilestone = true
+      toastTimer.interval = 5000
+      toastTimer.restart()
     }
   }
   Timer { id: toastTimer; interval: 3600; onTriggered: root.toast = "" }
@@ -372,9 +385,11 @@ Panel {
         height: Theme.s(38)
         radius: height / 2
         // Opaque, and a step lighter than the panel, so it reads as floating.
-        color: root.toastIsError ? Theme.danger : Qt.tint(Theme.bg, Theme.alpha(Theme.fg, 0.14))
+        color: root.toastIsError ? Theme.danger
+          : root.toastIsMilestone ? Qt.tint(Theme.bg, Theme.alpha(Theme.fire, 0.35))
+          : Qt.tint(Theme.bg, Theme.alpha(Theme.fg, 0.14))
         border.width: 1
-        border.color: root.toastIsError ? "transparent" : Theme.alpha(Theme.fg, 0.12)
+        border.color: root.toastIsError ? "transparent" : root.toastIsMilestone ? Theme.alpha(Theme.fire, 0.6) : Theme.alpha(Theme.fg, 0.12)
         opacity: root.toast !== "" ? 1 : 0
         visible: opacity > 0
         scale: root.toast !== "" ? 1 : 0.94
@@ -397,15 +412,15 @@ Panel {
             text: root.toast
             color: root.toastIsError ? "white" : Theme.label
             font.family: Theme.font
-            font.pixelSize: Theme.callout
-            font.weight: Font.Medium
+            font.pixelSize: root.toastIsMilestone ? Theme.body : Theme.callout
+            font.weight: root.toastIsMilestone ? Font.Bold : Font.Medium
             elide: Text.ElideRight
           }
 
           Text {
             id: undoLabel
             anchors.verticalCenter: parent.verticalCenter
-            visible: !root.toastIsError && root.toast.indexOf("Undid") !== 0
+            visible: !root.toastIsError && !root.toastIsMilestone && root.toast.indexOf("Undid") !== 0
             text: "Undo"
             color: Theme.good
             font.family: Theme.font
