@@ -302,17 +302,17 @@ Panel {
           }
         }
 
-        // ---- first run without Bun: one button away from working
+        // ---- python3 missing: almost impossible on Omarchy, but say so plainly
         Card {
           visible: root.hostWidget !== null && root.hostWidget.cliMissing
           width: parent.width
           padding: Theme.s(20)
-          spacing: Theme.s(12)
+          spacing: Theme.s(10)
 
           Text {
             textFormat: Text.PlainText
             width: parent.width
-            text: "One more step"
+            text: "Python 3 not found"
             color: Theme.label
             font.family: Theme.font
             font.pixelSize: Theme.title
@@ -321,32 +321,12 @@ Panel {
           Text {
             textFormat: Text.PlainText
             width: parent.width
-            text: "LifeOS keeps your data in a small local database, run by Bun. Install it and this panel comes alive — nothing else to set up."
+            text: "LifeOS runs on the Python 3 that comes with Omarchy, but python3 is not on this system's PATH. Once it is back, LifeOS picks it up the next time the shell starts."
             color: Theme.secondary
             font.family: Theme.font
             font.pixelSize: Theme.body
             wrapMode: Text.WordWrap
             lineHeight: 1.15
-          }
-          Rectangle {
-            width: parent.width
-            height: cmdText.implicitHeight + Theme.s(16)
-            radius: Theme.radiusControl
-            color: Theme.fillStrong
-            Text {
-              textFormat: Text.PlainText
-              id: cmdText
-              anchors.centerIn: parent
-              text: root.hostWidget ? root.hostWidget.setupCommand : ""
-              color: Theme.label
-              font.family: Theme.iconFont
-              font.pixelSize: Theme.callout
-            }
-          }
-          PillButton {
-            anchors.right: parent.right
-            text: "Install Bun"
-            onClicked: root.hostWidget.setup()
           }
         }
 

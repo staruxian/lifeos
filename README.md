@@ -47,9 +47,9 @@ The bar shows a ring for how much of today is done, next to the nearest countdow
 - **Insights** — patterns from the last twelve weeks: your best and worst weekdays,
   how kept days feel, reading at weekends, best runs, and a month of check-ins.
 - **Lock screen** — with [Lock Screen Explorer](https://github.com/SirJul1337/omarchy-lock-explorer),
-  `install.sh` adds a *LifeOS* design showing the time, today's priorities, habits left and
-  the next countdown. Pick it with `omarchy-shell lock explore` → Custom. (It shows your
-  priorities to anyone who sees the locked screen.)
+  a *LifeOS* design shows the time, today's priorities, habits left and the next
+  countdown (see [Extras](#extras)). It shows your priorities to anyone who sees the
+  locked screen.
 
 **Strict mode** (Settings) makes it firm: only today and yesterday can be logged, the
 evening shutdown opens on its own, and a habit with a streak is deleted only by typing
@@ -57,21 +57,12 @@ its name.
 
 ## Install
 
-LifeOS needs [Bun](https://bun.sh), which runs its small local database:
-
 ```sh
-omarchy pkg add bun
 omarchy plugin add https://github.com/staruxian/lifeos.git --enable
 ```
 
-If Bun is missing, the panel says so and offers to install it.
-
-**Optional:** get the `lifeos` terminal command (and a slightly faster panel):
-
-```sh
-~/.config/omarchy/plugins/staruxian.lifeos/install.sh
-lifeos help
-```
+That's all: LifeOS runs on the Python 3 and SQLite that every Omarchy system already
+has, so there is nothing else to install.
 
 ## Use
 
@@ -99,7 +90,8 @@ o.bind("SUPER + ALT + A", "LifeOS quick add", "omarchy-shell staruxian.lifeos qu
 Settings live in the panel (gear icon) or `lifeos set`: `strict`, `plan`, `morning`,
 `remind`, `shutdown`, `bedtime`, `notify`, `tone`.
 
-From a terminal (with `install.sh`), everything updates the bar live:
+From a terminal — add `alias lifeos='python3 ~/.config/omarchy/plugins/staruxian.lifeos/cli/lifeos/lifeos.py'`
+to your shell config — everything updates the bar live:
 
 ```sh
 lifeos                                   # today at a glance
@@ -124,31 +116,40 @@ Everything stays on your machine, in `~/.local/share/lifeos/lifeos.db` (SQLite).
 The panel reads a snapshot from `~/.local/state/lifeos/state.json`. LifeOS makes
 no network requests and does not touch your configuration.
 
+## Extras
+
+The lock screen design is one file; copy it into Lock Screen Explorer's designs, then
+pick *LifeOS* with `omarchy-shell lock explore` → Custom:
+
+```sh
+mkdir -p ~/.config/omarchy/lock-designs
+cp ~/.config/omarchy/plugins/staruxian.lifeos/extras/LifeOS.lock.qml ~/.config/omarchy/lock-designs/LifeOS.qml
+```
+
 ## Remove
 
 ```sh
-~/.config/omarchy/plugins/staruxian.lifeos/uninstall.sh   # only if you ran install.sh
 omarchy plugin remove staruxian.lifeos
-rm -rf ~/.local/share/lifeos ~/.local/state/lifeos        # only if you want your data gone too
+rm -rf ~/.local/share/lifeos ~/.local/state/lifeos ~/.cache/lifeos   # only if you want your data gone too
 ```
 
-`install.sh` records everything it adds (the `lifeos` command, a plugin link for a
-checkout, the lock design) with a checksum in `~/.local/share/lifeos/installed`, and it
-never replaces a file it did not create. `uninstall.sh` removes only those entries, and
-only while they are unchanged; `--purge` also deletes your data.
+Upgrading from 1.3 or earlier, where `install.sh` could add a compiled `~/.local/bin/lifeos`?
+It is no longer used; remove it with `rm ~/.local/bin/lifeos` (and use the alias above).
 
 ## Develop
 
 ```
-manifest.json, *.qml, components/, pages/   the Omarchy shell plugin (QML)
-cli/                                        the lifeos CLI (Bun + TypeScript + SQLite)
+manifest.json, *.qml, components/, pages/, views/   the Omarchy shell plugin (QML)
+cli/lifeos/                                         the lifeos CLI (Python 3 standard library + SQLite)
+cli/tests/                                          its tests
 ```
 
 The CLI owns the data and computes every number the panel shows; the QML only
-lays it out. `cd cli && bun test` runs the tests. `./install.sh` from a checkout
-links it into the shell. The shell caches plugin QML, so run
-`omarchy restart shell` after edits. `bun run typecheck` checks the TypeScript.
-Architecture, rules and known QML pitfalls are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
+lays it out. `python3 -m unittest discover -s cli/tests` runs the tests. To work on a
+checkout, link it into the shell with
+`ln -s "$PWD" ~/.config/omarchy/plugins/staruxian.lifeos`. The shell caches plugin QML,
+so run `omarchy restart shell` after edits. Architecture, rules and known QML pitfalls
+are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 ## License
 

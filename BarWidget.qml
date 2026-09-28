@@ -75,22 +75,17 @@ BarWidget {
 
   // ---- CLI --------------------------------------------------------------
 
-  // How to reach the CLI, in order of preference: $LIFEOS_BIN, the compiled
-  // ~/.local/bin/lifeos from install.sh, or Bun running the source that
-  // ships in this plugin. Empty until found; `cliMissing` once we know Bun
-  // is not installed either.
+  // The CLI ships in this plugin and runs on the Python every Omarchy system
+  // has, so there is nothing to install. $LIFEOS_BIN overrides it for
+  // development. Empty until found; `cliMissing` only if python3 is gone.
   property var cliCommand: []
   property bool cliMissing: false
-  readonly property string setupCommand: "omarchy pkg add bun"
 
   Process {
     id: locate
     command: ["bash", "-c", ""
-      + "dir=\"$1\"; "
       + "if [[ -n \"$LIFEOS_BIN\" && -x \"$LIFEOS_BIN\" ]]; then printf '%s\\n' \"$LIFEOS_BIN\"; exit; fi; "
-      + "if [[ -x \"$HOME/.local/bin/lifeos\" ]]; then printf '%s\\n' \"$HOME/.local/bin/lifeos\"; exit; fi; "
-      + "PATH=\"$PATH:$HOME/.bun/bin:/usr/local/bin\"; bun=\"$(command -v bun)\"; "
-      + "if [[ -n \"$bun\" ]]; then printf '%s\\n%s\\n' \"$bun\" \"$dir/cli/src/index.ts\"; fi",
+      + "py=\"$(command -v python3)\" && printf '%s\\n%s\\n' \"$py\" \"$1/cli/lifeos/lifeos.py\"",
       "lifeos-locate", root.pluginDir]
     stdout: StdioCollector {
       id: locateOut
@@ -106,20 +101,6 @@ BarWidget {
 
   function locateCli() {
     if (!locate.running) locate.running = true
-  }
-
-  // Opens a terminal that installs Bun; the widget looks again afterwards.
-  function setup() {
-    if (root.bar) root.bar.run("omarchy-launch-floating-terminal-with-presentation " + root.setupCommand)
-    retryLocate.restart()
-  }
-
-  Timer {
-    id: retryLocate
-    interval: 5000
-    repeat: true
-    running: root.cliMissing
-    onTriggered: root.locateCli()
   }
 
   property var queue: []
