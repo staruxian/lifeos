@@ -12,7 +12,8 @@ progress and countdowns, built into the Omarchy bar.
 - **Reading** — add a book and its page count, log pages each day, and see when you will finish at your pace.
 - **Events** — something to look forward to, in big numbers. Gone once the day has passed.
 - **People** — the people who matter and their birthdays: the age they turn, the days
-  left, and a reminder a week, a day, and on the day. Birthdays count down with events.
+  left, and a reminder a week, a day, and on the day. Kept separate from Events; Today
+  shows a birthday on its own card when it is within a week.
 
 The bar shows a ring for how much of today is done, next to the nearest countdown.
 

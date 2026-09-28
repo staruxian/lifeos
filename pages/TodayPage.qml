@@ -160,7 +160,16 @@ PageBase {
     event: root.nextEvent
     host: root.host
     removable: false
-    onActivated: root.navigate(root.nextEvent && root.nextEvent.kind === "birthday" ? "people" : "events", false)
+    onActivated: root.navigate("events", false)
+  }
+
+  // ---- a birthday this week, on its own card
+  PersonCard {
+    readonly property var next: root.s ? root.s.nextBirthday : null
+    visible: next !== null && next.daysLeft <= 7
+    person: next
+    host: root.host
+    TapHandler { onTapped: root.navigate("people", false) }
   }
 
   // ---- habits due today

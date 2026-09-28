@@ -50,15 +50,16 @@ export function dueNotes(state: State, now: Date): Note[] {
       })
     }
     for (const e of state.events) {
-      const key = `${e.kind}:${e.id}:${day}`
-      if (e.kind === "birthday") {
-        const name = e.title.replace(/'s birthday$/, "")
-        const turns = e.turning ? ` turns ${e.turning}` : ""
-        if (e.daysLeft === 0) notes.push({ key, title: `🎂 ${name}${turns ? turns + " today" : "'s birthday is today"}`, body: "Send them a message." })
-        else if (e.daysLeft === 1) notes.push({ key, title: `🎂 ${name}${turns ? turns + " tomorrow" : "'s birthday is tomorrow"}`, body: "A gift, a call, a plan?" })
-        else if (e.daysLeft === 7) notes.push({ key, title: `🎂 ${name}'s birthday in a week`, body: "Time to think of something." })
-      } else if (e.daysLeft === 0) notes.push({ key, title: `${e.emoji ? e.emoji + " " : ""}Today: ${e.title}`, body: "The day is here. Enjoy it." })
+      const key = `event:${e.id}:${day}`
+      if (e.daysLeft === 0) notes.push({ key, title: `${e.emoji ? e.emoji + " " : ""}Today: ${e.title}`, body: "The day is here. Enjoy it." })
       else if (e.daysLeft === 3) notes.push({ key, title: `${e.emoji ? e.emoji + " " : ""}${e.title} in 3 days`, body: "Anything to prepare?" })
+    }
+    for (const p of state.people) {
+      const key = `birthday:${p.id}:${day}`
+      const turns = p.turning ? ` turns ${p.turning}` : ""
+      if (p.daysLeft === 0) notes.push({ key, title: `🎂 ${p.name}${turns ? turns + " today" : "'s birthday is today"}`, body: "Send them a message." })
+      else if (p.daysLeft === 1) notes.push({ key, title: `🎂 ${p.name}${turns ? turns + " tomorrow" : "'s birthday is tomorrow"}`, body: "A gift, a call, a plan?" })
+      else if (p.daysLeft === 7) notes.push({ key, title: `🎂 ${p.name}'s birthday in a week`, body: "Time to think of something." })
     }
   }
 

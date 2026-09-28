@@ -73,15 +73,11 @@ export interface Book {
 
 export interface Event {
   id: number
-  kind: "event" | "birthday"
   title: string
   day: Day
   emoji: string
   daysLeft: number
   progress: number
-  // Birthdays: whose, and the age they turn when the year is known.
-  personId: number | null
-  turning: number | null
 }
 
 export interface Person {
@@ -137,6 +133,8 @@ export interface State {
     priorities: number
     dayComplete: boolean
     nextEvent: Event | null
+    // Kept apart from events: birthdays belong to People.
+    nextBirthday: Person | null
     reading: { id: number; title: string; percent: number } | null
   }
   tasks: { overdue: Task[]; today: Task[]; upcoming: Task[]; someday: Task[]; doneToday: Task[] }
@@ -366,7 +364,7 @@ function buildBooks(db: Database, today: Day): State["books"] {
 
 // Past events simply stop appearing; the rows stay, so nothing is lost if the
 // date was mistyped.
-function buildEvents(db: Database, today: Day, people: Person[]): Event[] {
+function buildEvents(db: Database, today: Day): Event[] {
   const rows = db.query("SELECT id, title, day, emoji, created_on FROM events WHERE day >= ? ORDER BY day, id").all(today) as {
     id: number; title: string; day: Day; emoji: string; created_on: Day
   }[]
@@ -375,31 +373,14 @@ function buildEvents(db: Database, today: Day, people: Person[]): Event[] {
     const elapsed = diffDays(e.created_on, today)
     return {
       id: e.id,
-      kind: "event",
       title: e.title,
       day: e.day,
       emoji: e.emoji,
       daysLeft: diffDays(today, e.day),
       progress: span <= 0 ? 1 : Math.max(0, Math.min(1, elapsed / span)),
-      personId: null,
-      turning: null,
     }
   })
-  // Every birthday is a countdown too; the bar fills over the year between.
-  for (const p of people) {
-    events.push({
-      id: p.id,
-      kind: "birthday",
-      title: `${p.name}'s birthday`,
-      day: p.next,
-      emoji: "🎂",
-      daysLeft: p.daysLeft,
-      progress: Math.max(0, Math.min(1, 1 - p.daysLeft / 365)),
-      personId: p.id,
-      turning: p.turning,
-    })
-  }
-  return events.sort((a, b) => a.daysLeft - b.daysLeft || (a.kind === b.kind ? a.id - b.id : a.kind === "birthday" ? -1 : 1))
+  return events
 }
 
 function buildPeople(db: Database, today: Day): Person[] {
@@ -640,7 +621,7 @@ export function buildState(db: Database, today: Day, now = new Date()): State {
   const habits = buildHabits(db, today)
   const books = buildBooks(db, today)
   const people = buildPeople(db, today)
-  const events = buildEvents(db, today, people)
+  const events = buildEvents(db, today)
   const due = habits.filter((h) => h.scheduledToday && !h.skipped)
   const current = books.reading[0]
   const time = clock(now)
@@ -685,6 +666,7 @@ export function buildState(db: Database, today: Day, now = new Date()): State {
       priorities: priorities.length,
       dayComplete: totalCount > 0 && doneCount === totalCount,
       nextEvent: events[0] ?? null,
+      nextBirthday: people[0] ?? null,
       reading: current ? { id: current.id, title: current.title, percent: current.percent } : null,
     },
     tasks,

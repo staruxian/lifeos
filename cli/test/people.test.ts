@@ -33,7 +33,7 @@ describe("birthdays", () => {
     expect(nextBirthday({ month: 2, day: 29, year: null }, FRI)).toBe("2027-02-28")
   })
 
-  test("people count down with the events and know the age they turn", () => {
+  test("people know the age they turn, and stay out of the events", () => {
     const db = fresh()
     store.addPerson(db, "Aziz", { month: 10, day: 12, year: 2001 }, FRI)
     store.addPerson(db, "Mom", { month: 9, day: 26, year: null }, FRI)
@@ -43,8 +43,9 @@ describe("birthdays", () => {
     expect(s.people.map((p) => p.name)).toEqual(["Mom", "Aziz"])
     expect(s.people[1]!.turning).toBe(25)
     expect(s.people[0]!.turning).toBeNull()
-    expect(s.events.map((e) => e.title)).toEqual(["Mom's birthday", "Trip", "Aziz's birthday"])
-    expect(s.summary.nextEvent!.kind).toBe("birthday")
+    expect(s.events.map((e) => e.title)).toEqual(["Trip"])
+    expect(s.summary.nextEvent!.title).toBe("Trip")
+    expect(s.summary.nextBirthday!.name).toBe("Mom")
   })
 
   test("a birthday notifies a week, a day, and on the day", () => {
