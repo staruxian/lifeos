@@ -127,12 +127,15 @@ no network requests and does not touch your configuration.
 ## Remove
 
 ```sh
+~/.config/omarchy/plugins/staruxian.lifeos/uninstall.sh   # only if you ran install.sh
 omarchy plugin remove staruxian.lifeos
-rm -f ~/.local/bin/lifeos                       # if you ran install.sh
-rm -rf ~/.local/share/lifeos ~/.local/state/lifeos   # only if you want your data gone too
+rm -rf ~/.local/share/lifeos ~/.local/state/lifeos        # only if you want your data gone too
 ```
 
-From a local checkout, `./uninstall.sh` does the same (`--purge` deletes data).
+`install.sh` records everything it adds (the `lifeos` command, a plugin link for a
+checkout, the lock design) with a checksum in `~/.local/share/lifeos/installed`, and it
+never replaces a file it did not create. `uninstall.sh` removes only those entries, and
+only while they are unchanged; `--purge` also deletes your data.
 
 ## Develop
 
