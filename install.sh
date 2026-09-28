@@ -30,6 +30,15 @@ chmod 700 "$data_dir"
 touch "$manifest"
 chmod 600 "$manifest"
 
+# Link entries written by installers before 1.3.3 ("link") may describe a link
+# the user made themselves, so they are dropped, never trusted. Only "made-link"
+# entries, written the moment this installer creates a link, are ever removed.
+if grep -q $'^link\t' "$manifest"; then
+  tmp="$(mktemp "$manifest.XXXXXX")"
+  grep -v $'^link\t' "$manifest" > "$tmp" || true
+  mv "$tmp" "$manifest"
+fi
+
 sum() { sha256sum "$1" | cut -d' ' -f1; }
 
 # The checksum recorded for a path, if this installer put it there.
@@ -75,14 +84,14 @@ if [[ "$here" != "$link" ]]; then
     # Already in place. Only a link this installer made (and recorded) stays
     # ours; one you made yourself is used as-is and never recorded, so
     # uninstall.sh will not remove it.
-    [[ "$(recorded link "$link")" == "$here" ]] || echo "  $link already points here (not created by install.sh) — using it, not tracking it" >&2
+    [[ "$(recorded made-link "$link")" == "$here" ]] || echo "  $link already points here (not created by install.sh) — using it, not tracking it" >&2
   elif [[ -e "$link" || -L "$link" ]]; then
     echo "  $link already exists and is not this checkout — left alone" >&2
   else
     echo "→ linking $here into the shell"
     mkdir -p "$plugins_dir"
     ln -s "$here" "$link"
-    record link "$link" "$here"
+    record made-link "$link" "$here"
     linked=1
   fi
 fi

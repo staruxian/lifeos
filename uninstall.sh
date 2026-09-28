@@ -22,6 +22,10 @@ if [[ -f "$manifest" ]]; then
           echo "  kept $path — it changed since LifeOS installed it"
         fi ;;
       link)
+        # Written by installers before 1.3.3, which could record a link the
+        # user made. Never trusted: the link is left alone.
+        [[ -e "$path" || -L "$path" ]] && echo "  kept $path — not known to be created by install.sh" ;;
+      made-link)
         if [[ -L "$path" && "$(readlink "$path")" == "$value" ]]; then
           rm "$path" && echo "→ removed $path"
         elif [[ -e "$path" || -L "$path" ]]; then
